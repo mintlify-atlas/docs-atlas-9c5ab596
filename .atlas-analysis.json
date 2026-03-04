@@ -1,0 +1,147 @@
+{
+  "projectType": "saas",
+  "projectName": "Kolibri Learning Platform",
+  "projectDescription": "Offline-first learning platform for universal education with content management, user administration, and teaching tools",
+  "theme": "almond",
+  "primaryColor": "#f7ce22",
+  "lightColor": "#7c5c25",
+  "darkColor": null,
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/architecture",
+              "concepts/plugins",
+              "concepts/content-management",
+              "concepts/user-roles"
+            ]
+          },
+          {
+            "group": "Developer Guides",
+            "pages": [
+              "guides/development-setup",
+              "guides/frontend-development",
+              "guides/backend-development",
+              "guides/plugin-development",
+              "guides/testing",
+              "guides/internationalization"
+            ]
+          },
+          {
+            "group": "Features",
+            "pages": [
+              "features/learn",
+              "features/coach",
+              "features/facility-management",
+              "features/device-management",
+              "features/content-library"
+            ]
+          },
+          {
+            "group": "Deployment",
+            "pages": [
+              "deployment/overview",
+              "deployment/production",
+              "deployment/android",
+              "deployment/offline-setup"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Core APIs",
+            "pages": [
+              "api/overview",
+              "api/authentication",
+              "api/permissions"
+            ]
+          },
+          {
+            "group": "Resources",
+            "pages": [
+              "api/auth",
+              "api/content",
+              "api/lessons",
+              "api/exams",
+              "api/facility",
+              "api/device",
+              "api/logger"
+            ]
+          },
+          {
+            "group": "Frontend",
+            "pages": [
+              "api/frontend/core-api",
+              "api/frontend/composables",
+              "api/frontend/components"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Contributing",
+        "groups": [
+          {
+            "group": "Getting Involved",
+            "pages": [
+              "contributing/overview",
+              "contributing/code-of-conduct",
+              "contributing/development-workflow"
+            ]
+          },
+          {
+            "group": "Best Practices",
+            "pages": [
+              "contributing/code-quality",
+              "contributing/code-review",
+              "contributing/testing-guidelines"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Offline-first learning platform with content channels",
+    "Multi-role user system (learners, coaches, admins)",
+    "Plugin-based architecture for extensible features",
+    "Content import and synchronization across devices",
+    "Class and lesson management tools for educators",
+    "Progress tracking and analytics",
+    "Multi-language support with i18n",
+    "Cross-platform (Windows, Mac, Linux, Android)"
+  ],
+  "publicApiSurface": [
+    "kolibri start - Start the Kolibri server",
+    "kolibri stop - Stop the Kolibri server",
+    "kolibri plugin enable/disable - Manage plugins",
+    "kolibri manage - Django management commands",
+    "/api/auth/* - Authentication and user management endpoints",
+    "/api/content/* - Content channel and metadata endpoints",
+    "/api/lessons/* - Lesson management endpoints",
+    "/api/exams/* - Quiz and exam endpoints",
+    "/api/facility/* - Facility and user administration endpoints",
+    "/api/device/* - Device configuration endpoints",
+    "/api/logger/* - Learning analytics and logging endpoints",
+    "KolibriPluginBase - Base class for plugin development",
+    "ValuesViewset/ReadOnlyValuesViewset - API viewset patterns",
+    "createTranslator() - Frontend i18n helper",
+    "Resource class - Frontend API client",
+    "Kolibri Design System components - KButton, KModal, KTextbox, etc."
+  ]
+}
