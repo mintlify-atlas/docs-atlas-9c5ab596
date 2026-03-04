@@ -1,0 +1,712 @@
+---
+title: Content Library
+description: Content channels, Kolibri Studio integration, and available educational resources
+---
+
+Kolibri's content library system enables access to a vast collection of educational resources curated by content providers worldwide. Content is organized into channels that can be imported, browsed, and assigned to learners through Kolibri's plugin ecosystem.
+
+## Overview
+
+The Kolibri content library is a flexible, offline-first system for delivering educational resources. Content is created and curated in Kolibri Studio, packaged into channels, and imported to Kolibri devices for learner access.
+
+**Key Concepts:**
+- Content channels as distribution units
+- Kolibri Studio as content authoring platform
+- Offline-optimized resource formats
+- Hierarchical content organization
+- Metadata-rich searchable resources
+- Multi-language content support
+
+<Info>
+Kolibri can function entirely offline once content is imported. Internet connectivity is only needed for importing or updating content.
+</Info>
+
+## Content Channels
+
+Channels are self-contained collections of educational resources created by content providers and imported into Kolibri.
+
+### What is a Content Channel?
+
+A channel is:
+- A curated collection of learning resources
+- Organized hierarchically into topics and subtopics
+- Created and published by content providers
+- Distributed as a portable database
+- Importable to any Kolibri device
+
+### Channel Structure
+
+<Steps>
+  <Step title="Channel Root">
+    Top level contains:
+    - Channel name and description
+    - Channel metadata (language, version, provider)
+    - Thumbnail image
+    - Total resource count and size
+  </Step>
+  
+  <Step title="Topics">
+    Organizational containers:
+    - Subject areas (Math, Science, Language, etc.)
+    - Grade levels or age groups
+    - Curriculum units
+    - Nested subtopics for hierarchy
+  </Step>
+  
+  <Step title="Resources">
+    Actual learning content:
+    - Videos, exercises, documents, apps
+    - Resource metadata and descriptions
+    - Learning activity classification
+    - Duration and difficulty information
+  </Step>
+</Steps>
+
+### Channel Metadata
+
+Each channel includes rich metadata:
+
+<Accordion title="Descriptive Information">
+  - **Title**: Channel name
+  - **Description**: Overview of channel content
+  - **Tagline**: Brief one-line summary
+  - **Thumbnail**: Visual representation
+  - **Language**: Primary language of content
+</Accordion>
+
+<Accordion title="Version Information">
+  - **Version Number**: Channel version (incremented with updates)
+  - **Published Date**: When version was released
+  - **Last Updated**: Most recent modification
+  - **Source ID**: Unique channel identifier
+</Accordion>
+
+<Accordion title="Content Statistics">
+  - **Total Resources**: Number of content items
+  - **Resource Count by Type**: Videos, exercises, etc.
+  - **Total Size**: Storage space required
+  - **Languages Available**: All languages in channel
+  - **Grade Levels**: Applicable age/grade ranges
+</Accordion>
+
+<Accordion title="Provider Information">
+  - **Author**: Content creator or organization
+  - **Provider Website**: Link to source
+  - **License**: Content licensing terms
+  - **Copyright Holder**: Rights information
+</Accordion>
+
+## Kolibri Studio
+
+Kolibri Studio is the web-based platform where channels are created, curated, and published.
+
+### Studio Overview
+
+Kolibri Studio (https://studio.learningequality.org) provides:
+- Web interface for content creation
+- Resource upload and hosting
+- Content organization and curation
+- Metadata editing and tagging
+- Channel publishing workflow
+- Version control and updates
+
+### Content Creation in Studio
+
+<Steps>
+  <Step title="Create Channel">
+    Content providers start by:
+    - Creating new channel in Studio
+    - Setting channel metadata
+    - Choosing primary language
+    - Configuring channel settings
+  </Step>
+  
+  <Step title="Add Content">
+    Build channel content:
+    - Upload original resources
+    - Import from other channels
+    - Organize into topic structure
+    - Add exercises and assessments
+  </Step>
+  
+  <Step title="Edit Metadata">
+    Enhance discoverability:
+    - Add titles and descriptions
+    - Tag with learning activity types
+    - Set grade levels and subjects
+    - Specify languages
+    - Add accessibility features
+  </Step>
+  
+  <Step title="Publish Channel">
+    Make available to Kolibri:
+    - Review and finalize content
+    - Publish channel version
+    - Generate channel token
+    - Distribute token to Kolibri admins
+  </Step>
+</Steps>
+
+### Studio Features
+
+**Content Types Supported**
+- Video files (MP4, WebM)
+- Documents (PDF, ePub)
+- HTML5 applications
+- Exercises with question banks
+- Audio files
+- Interactive H5P content
+- Slideshows and presentations
+
+**Curation Tools**
+- Drag-and-drop organization
+- Copy content between channels
+- Bulk operations
+- Content filtering and search
+- Prerequisite relationships
+- Related content linking
+
+**Quality Control**
+- Content validation
+- Broken link detection
+- File format verification
+- Metadata completeness checks
+- Preview before publishing
+
+<Tip>
+Content providers can create private channels for internal use or public channels available to all Kolibri users.
+</Tip>
+
+## Available Content Channels
+
+Kolibri provides access to numerous high-quality educational content channels.
+
+### Major Content Providers
+
+<CardGroup cols={2}>
+  <Card title="Khan Academy" icon="graduation-cap">
+    Comprehensive math and science content:
+    - Thousands of instructional videos
+    - Practice exercises with mastery tracking
+    - Aligned to common curricula
+    - Multiple languages available
+  </Card>
+  
+  <Card title="CK-12 Foundation" icon="book">
+    STEM textbooks and materials:
+    - Interactive textbooks
+    - Simulations and activities
+    - Standards-aligned content
+    - Free and openly licensed
+  </Card>
+  
+  <Card title="African Storybook" icon="book-open">
+    Early literacy resources:
+    - Stories in African languages
+    - Multiple reading levels
+    - Audio narration
+    - Culturally relevant content
+  </Card>
+  
+  <Card title="Phet Interactive Simulations" icon="flask">
+    Science and math simulations:
+    - Interactive STEM activities
+    - Inquiry-based learning
+    - Research-backed design
+    - Multiple languages
+  </Card>
+  
+  <Card title="Biblioteca Digital de Lectura" icon="library">
+    Spanish reading library:
+    - Spanish language books
+    - Diverse reading levels
+    - Literary and informational texts
+    - Growing collection
+  </Card>
+  
+  <Card title="Pratham Books" icon="child">
+    Stories for young learners:
+    - Open-licensed storybooks
+    - Multiple Indian languages
+    - Age-appropriate content
+    - Reading level progression
+  </Card>
+</CardGroup>
+
+### Specialized Content
+
+**Vocational Training**
+- Technical skills content
+- Job preparation materials
+- Industry certifications
+- Practical demonstrations
+
+**Health Education**
+- Public health information
+- Hygiene and wellness
+- Disease prevention
+- Nutrition education
+
+**Teacher Professional Development**
+- Pedagogy resources
+- Classroom management
+- Subject-specific teaching guides
+- Assessment strategies
+
+**Life Skills**
+- Financial literacy
+- Entrepreneurship
+- Communication skills
+- Critical thinking
+
+<Info>
+New channels are regularly added to Kolibri Studio. Visit the public channel directory to discover available content.
+</Info>
+
+## Resource Types and Formats
+
+Kolibri supports diverse content types optimized for offline access.
+
+### Content Type Categories
+
+<Tabs>
+  <Tab title="Video">
+    **Video Resources**
+    - MP4 format (H.264 codec)
+    - Multiple quality levels
+    - Subtitle/caption support
+    - Chapter markers
+    - Thumbnail previews
+    
+    **Viewing Features**
+    - Playback controls (play, pause, seek)
+    - Speed adjustment
+    - Fullscreen mode
+    - Progress tracking
+    - Resume from last position
+  </Tab>
+  
+  <Tab title="Exercise">
+    **Exercise Resources**
+    - Multiple question types
+    - Answer feedback
+    - Hints and explanations
+    - Randomized questions
+    - Mastery-based progression
+    
+    **Question Types**
+    - Multiple choice
+    - Numeric input
+    - Text input
+    - Drag and drop
+    - Image-based questions
+  </Tab>
+  
+  <Tab title="Document">
+    **Document Resources**
+    - PDF files
+    - ePub books
+    - Zoom and pan controls
+    - Page navigation
+    - Text selection (where supported)
+    
+    **Reading Features**
+    - Page thumbnails
+    - Bookmarks
+    - Search within document
+    - Print capability
+  </Tab>
+  
+  <Tab title="HTML5 App">
+    **Interactive Applications**
+    - HTML5 packages (zip)
+    - Simulations and games
+    - Interactive activities
+    - H5P content
+    - Offline-compatible
+    
+    **App Types**
+    - Simulations (Phet, etc.)
+    - Educational games
+    - Interactive diagrams
+    - Virtual labs
+  </Tab>
+  
+  <Tab title="Audio">
+    **Audio Resources**
+    - MP3 format
+    - Podcasts and lectures
+    - Audio stories
+    - Language learning
+    - Music and sound
+    
+    **Playback Features**
+    - Play controls
+    - Volume adjustment
+    - Progress tracking
+    - Background playback
+  </Tab>
+</Tabs>
+
+### Learning Activity Classification
+
+Resources are tagged by learning activity type:
+
+- **Watch**: Videos and visual demonstrations
+- **Read**: Text-based materials and documents
+- **Practice**: Exercises and assessments
+- **Create**: Projects and creative activities
+- **Reflect**: Discussion prompts and journaling
+- **Listen**: Audio content
+- **Explore**: Interactive simulations and experiments
+
+<Note>
+Learning activity tags help learners and coaches filter and find appropriate content types for specific learning goals.
+</Note>
+
+## Content Organization
+
+Content within channels is organized hierarchically for easy navigation and discovery.
+
+### Topic Hierarchy
+
+**Structure Levels**
+
+<Steps>
+  <Step title="Channel Root">
+    Top-level organization:
+    - Often by subject area
+    - Or by grade level
+    - Or by curriculum unit
+  </Step>
+  
+  <Step title="Primary Topics">
+    Major divisions:
+    - Subjects (Math, Science, Language)
+    - Grades (Grade 1, Grade 2, etc.)
+    - Units (Introduction, Advanced, etc.)
+  </Step>
+  
+  <Step title="Subtopics">
+    Detailed organization:
+    - Chapters or modules
+    - Specific skills or concepts
+    - Lesson groupings
+    - Can nest multiple levels deep
+  </Step>
+  
+  <Step title="Resources">
+    Leaf nodes:
+    - Individual learning resources
+    - Videos, exercises, documents
+    - Discrete learning objects
+  </Step>
+</Steps>
+
+### Navigation Patterns
+
+**Breadcrumb Navigation**
+- Shows current location in hierarchy
+- Click to navigate to parent topics
+- Helps learners maintain context
+
+**Topic Tree Browsing**
+- Expand/collapse topics
+- See resource counts per topic
+- Visual hierarchy representation
+
+**Related Content**
+- Recommendations based on current resource
+- Next/previous in topic sequence
+- Prerequisite relationships
+- Similar resources
+
+## Content Metadata
+
+Rich metadata enables powerful search and filtering capabilities.
+
+### Resource Metadata Fields
+
+<AccordionGroup>
+  <Accordion title="Basic Information">
+    - **Title**: Resource name
+    - **Description**: Detailed explanation
+    - **Author**: Creator or provider
+    - **License**: Usage terms (CC-BY, CC-BY-SA, etc.)
+  </Accordion>
+  
+  <Accordion title="Educational Metadata">
+    - **Learning Activity**: Watch, practice, read, etc.
+    - **Grade Level**: Appropriate ages/grades
+    - **Subject**: Topic area or discipline
+    - **Duration**: Estimated completion time
+    - **Difficulty**: Beginner, intermediate, advanced
+  </Accordion>
+  
+  <Accordion title="Technical Metadata">
+    - **Resource Type**: Video, exercise, document, etc.
+    - **File Size**: Storage requirement
+    - **Format**: File format details
+    - **Language**: Content language(s)
+    - **Accessibility**: Features for different abilities
+  </Accordion>
+  
+  <Accordion title="Curriculum Alignment">
+    - **Standards**: Aligned educational standards
+    - **Competencies**: Skills addressed
+    - **Prerequisites**: Required prior knowledge
+    - **Learning Objectives**: Goals and outcomes
+  </Accordion>
+</AccordionGroup>
+
+### Tags and Categories
+
+Content can be tagged with:
+- Subject keywords
+- Skill areas
+- Common Core standards
+- National curriculum alignments
+- Accessibility features
+- Language proficiency levels
+
+## Multi-Language Support
+
+Kolibri's content system supports multilingual resources and interfaces.
+
+### Language Features
+
+**Content Languages**
+- Resources available in multiple languages
+- Language-specific channels
+- Translated versions of popular content
+- Subtitle and caption support
+
+**Interface Languages**
+- Kolibri interface available in 100+ languages
+- Metadata displayed in user's language
+- Right-to-left (RTL) language support
+- Localized number and date formats
+
+**Filtering by Language**
+- Search within specific language
+- Filter channels by language
+- Multilingual content indicators
+
+<Tip>
+For multilingual deployments, import channels in multiple languages to serve diverse learner populations.
+</Tip>
+
+## Content Licensing
+
+Kolibri respects content licensing and enables proper attribution.
+
+### License Types
+
+Common licenses in Kolibri content:
+
+**Creative Commons Licenses**
+- CC-BY: Attribution required
+- CC-BY-SA: Attribution + ShareAlike
+- CC-BY-NC: Attribution + Non-commercial
+- CC-BY-ND: Attribution + No derivatives
+- CC0: Public domain
+
+**Other Licenses**
+- All Rights Reserved (with permission)
+- Public Domain
+- Custom open licenses
+- Educational use licenses
+
+### Attribution
+
+Kolibri displays:
+- License type for each resource
+- Copyright holder information
+- Original source attribution
+- Links to license terms
+
+<Info>
+All content in public Kolibri channels respects licensing terms. Private channels may include proprietary content for internal use.
+</Info>
+
+## Content Quality and Curation
+
+Kolibri Studio and the content ecosystem emphasize quality and pedagogical soundness.
+
+### Quality Standards
+
+**Content Review**
+- Accuracy verification
+- Age-appropriateness
+- Educational value
+- Technical quality (video/audio)
+- Accessibility considerations
+
+**Curation Process**
+- Expert review panels
+- Teacher and learner feedback
+- Continuous improvement
+- Regular content updates
+
+**Quality Indicators**
+- Completion rates
+- Learner engagement
+- Coach recommendations
+- Assessment performance
+
+### Content Guidelines
+
+Kolibri content providers follow guidelines for:
+- Inclusive and diverse representation
+- Culturally appropriate materials
+- Accurate and current information
+- Clear learning objectives
+- Engaging pedagogical design
+
+## Creating Custom Channels
+
+Organizations can create custom channels tailored to their needs.
+
+### Custom Channel Workflow
+
+<Steps>
+  <Step title="Plan Channel">
+    Design your content:
+    - Define learning objectives
+    - Identify target audience
+    - Outline topic structure
+    - Gather source materials
+  </Step>
+  
+  <Step title="Create Studio Account">
+    Set up in Kolibri Studio:
+    - Register for free account
+    - Verify email
+    - Review documentation
+    - Explore example channels
+  </Step>
+  
+  <Step title="Build Channel">
+    Create and organize:
+    - Upload or import content
+    - Create topic hierarchy
+    - Add metadata
+    - Build exercises
+    - Preview and test
+  </Step>
+  
+  <Step title="Publish and Distribute">
+    Make available:
+    - Publish channel version
+    - Generate channel token
+    - Import to Kolibri devices
+    - Iterate based on feedback
+  </Step>
+</Steps>
+
+### Custom Channel Use Cases
+
+<CardGroup cols={2}>
+  <Card title="School Curriculum" icon="school">
+    Align exactly to local curriculum with curated and original content.
+  </Card>
+  
+  <Card title="Training Programs" icon="certificate">
+    Deliver standardized training across locations with custom materials.
+  </Card>
+  
+  <Card title="Supplementary Materials" icon="plus-circle">
+    Add local examples, case studies, or culturally relevant content.
+  </Card>
+  
+  <Card title="Assessment Libraries" icon="clipboard-check">
+    Create custom exercise banks for specific learning outcomes.
+  </Card>
+</CardGroup>
+
+<Tip>
+Custom channels can remix content from public channels with original materials to create perfectly tailored learning resources.
+</Tip>
+
+## Content Updates and Versioning
+
+Channels evolve over time with updates and improvements.
+
+### Version Management
+
+**Channel Versions**
+- Each publish creates new version
+- Version number increments
+- Previous versions remain available
+- Devices can update to latest
+
+**Update Workflow**
+1. Content provider updates channel in Studio
+2. New version published
+3. Kolibri devices notified of update
+4. Admins review changes
+5. Import update to device
+6. Learners see new/updated content
+
+**Update Strategies**
+- Minor updates: Bug fixes, small additions
+- Major updates: Significant content changes
+- Breaking changes: Structural reorganization
+
+<Warning>
+Channel updates preserve learner progress. However, if resources are removed, associated progress may be archived.
+</Warning>
+
+## Content Discovery and Search
+
+Kolibri provides powerful search and discovery tools.
+
+### Search Capabilities
+
+**Full-Text Search**
+- Search across all channel content
+- Title and description matching
+- Metadata field searching
+- Ranking by relevance
+
+**Search Filters**
+- Filter by channel
+- Filter by learning activity
+- Filter by grade level
+- Filter by language
+- Combine multiple filters
+
+**Advanced Search**
+- Boolean operators
+- Phrase searching
+- Wildcard support
+- Category browsing
+
+### Recommendations
+
+Kolibri suggests content based on:
+- Current viewing context
+- Progress and history
+- Similar resources
+- Coach assignments
+- Curriculum alignment
+
+## Related Documentation
+
+<CardGroup cols={2}>
+  <Card title="Device Management" icon="server" href="/features/device-management">
+    Import and manage content channels on devices
+  </Card>
+  
+  <Card title="Learn Plugin" icon="book-reader" href="/features/learn">
+    How learners browse and access content
+  </Card>
+  
+  <Card title="Coach Plugin" icon="chalkboard-teacher" href="/features/coach">
+    Using content in lessons and quizzes
+  </Card>
+  
+  <Card title="Kolibri Studio" icon="cloud" href="https://studio.learningequality.org">
+    Create and publish custom content channels
+  </Card>
+</CardGroup>

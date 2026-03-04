@@ -1,0 +1,401 @@
+---
+title: Development Environment Setup
+description: Complete guide to setting up your Kolibri development environment with pyenv, virtualenv, and pre-commit hooks
+---
+
+## Overview
+
+This guide walks you through setting up a complete Kolibri development environment. By the end, you'll have Python, Node.js, all dependencies installed, and be ready to run the development server.
+
+<Warning>
+  Direct development on Windows is not supported. If you're using a Windows machine, please set up your development environment using WSL (Windows Subsystem for Linux).
+</Warning>
+
+## Prerequisites
+
+Before starting, you'll need:
+
+- Git and Git LFS
+- Terminal/command line access
+- Internet connection for downloading dependencies
+
+### Git and GitHub Setup
+
+<Steps>
+  <Step title="Install Git">
+    Install and configure [Git](https://help.github.com/articles/set-up-git/) on your computer. Try this [interactive tutorial](http://learngitbranching.js.org/) if you need practice with Git.
+  </Step>
+
+  <Step title="Create GitHub Account">
+    [Sign up for GitHub](https://github.com/join) if you don't have an account already.
+  </Step>
+
+  <Step title="Fork the Repository">
+    [Fork the main Kolibri repository](https://github.com/learningequality/kolibri). This makes it easier to submit pull requests later.
+  </Step>
+
+  <Step title="Install Git LFS">
+    **Important**: Install and set up [Git Large File Storage](https://docs.github.com/en/repositories/working-with-files/managing-large-files/installing-git-large-file-storage). This is required for managing large files in the repository.
+  </Step>
+</Steps>
+
+<Tip>
+  [Register your SSH keys](https://help.github.com/en/articles/connecting-to-github-with-ssh) on GitHub to avoid repeatedly entering your password.
+</Tip>
+
+### Clone the Repository
+
+Clone your Kolibri fork to your local machine (replace `$USERNAME` with your GitHub username):
+
+```bash
+git clone git@github.com:$USERNAME/kolibri.git
+cd kolibri
+```
+
+Initialize Git LFS and configure git blame:
+
+```bash
+git lfs install
+git config blame.ignoreRevsFile .git-blame-ignore-revs
+```
+
+Add the Learning Equality repository as an upstream remote:
+
+```bash
+git remote add upstream git@github.com:learningequality/kolibri.git
+git fetch --all
+git checkout -t upstream/develop
+```
+
+## Python Setup
+
+Kolibri requires Python 3.9 or higher (but not 3.14 or above).
+
+### Install pyenv (Recommended)
+
+pyenv allows you to manage multiple Python versions easily. This is the **highly recommended** approach.
+
+<Tabs>
+  <Tab title="macOS">
+    ```bash
+    # Install pyenv using Homebrew
+    brew update
+    brew install pyenv
+
+    # Add pyenv to your shell configuration
+    echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bash_profile
+    echo 'export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bash_profile
+    echo 'eval "$(pyenv init --path)"' >> ~/.bash_profile
+
+    # Reload your shell
+    source ~/.bash_profile
+    ```
+  </Tab>
+
+  <Tab title="Linux">
+    ```bash
+    # Install pyenv
+    curl https://pyenv.run | bash
+
+    # Add to ~/.bashrc (or ~/.zshrc for zsh)
+    echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bashrc
+    echo 'export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bashrc
+    echo 'eval "$(pyenv init --path)"' >> ~/.bashrc
+
+    # Reload your shell
+    source ~/.bashrc
+    ```
+  </Tab>
+</Tabs>
+
+Install a compatible Python version:
+
+```bash
+pyenv install 3.9.9
+```
+
+<Warning>
+  Never modify your system's built-in version of Python. Always use pyenv or a package manager to install separate Python versions.
+</Warning>
+
+### Create a Virtual Environment
+
+Virtual environments isolate project dependencies and prevent conflicts.
+
+<Note>
+  You can use pyenv-virtualenv, virtualenv, venv, or any other virtual environment tool. The instructions below use pyenv-virtualenv.
+</Note>
+
+Create and activate a virtual environment:
+
+```bash
+# Create virtual environment
+pyenv virtualenv 3.9.9 kolibri-py3.9
+
+# Activate the virtual environment
+pyenv activate kolibri-py3.9
+```
+
+To deactivate later:
+
+```bash
+pyenv deactivate
+```
+
+<Warning>
+  Keep your virtual environment activated for all remaining setup steps. Never install project dependencies using `sudo pip install ...`
+</Warning>
+
+## Environment Variables
+
+Set required environment variables before running Kolibri.
+
+### Required: KOLIBRI_RUN_MODE
+
+This variable is **required** and filters development work out of usage statistics:
+
+```bash
+export KOLIBRI_RUN_MODE="dev"
+```
+
+Add this to your `~/.bash_profile` or `~/.bashrc` to make it permanent:
+
+```bash
+echo 'export KOLIBRI_RUN_MODE="dev"' >> ~/.bash_profile
+```
+
+### Optional: KOLIBRI_HOME
+
+Set this if you want to run multiple Kolibri versions simultaneously:
+
+```bash
+export KOLIBRI_HOME="/path/to/kolibri/data"
+```
+
+## Install Python Dependencies
+
+With your virtual environment active and inside the `kolibri` directory:
+
+```bash
+# Required dependencies
+pip install -r requirements.txt --upgrade
+pip install -r requirements/dev.txt --upgrade
+pip install -e .
+
+# Optional (for testing and documentation)
+pip install -r requirements/test.txt --upgrade
+pip install -r requirements/docs.txt --upgrade
+```
+
+<Note>
+  The `--upgrade` flags can usually be omitted to speed up installation on subsequent runs.
+</Note>
+
+## Node.js and pnpm Setup
+
+Kolibri requires Node.js 20.x for frontend development.
+
+### Install Node.js with nodeenv
+
+The `nodeenv` tool (installed with Python dependencies) allows you to use specific Node.js versions:
+
+```bash
+# Ensure your Python virtual environment is active
+nodeenv -p --node=20.19.0
+npm install -g pnpm
+```
+
+### Install JavaScript Dependencies
+
+```bash
+pnpm install
+```
+
+## Database Setup
+
+Initialize the Kolibri database:
+
+```bash
+kolibri manage migrate
+```
+
+## Pre-commit Hooks (Required)
+
+Pre-commit hooks are **strongly recommended** and ensure code quality before committing.
+
+<Warning>
+  **Always run this command after cloning the repository.** If you don't use pre-commit hooks, your code will likely fail CI checks on pull requests.
+</Warning>
+
+### Install Pre-commit
+
+```bash
+pre-commit install
+```
+
+This enables automatic code formatting and linting on every commit.
+
+### Using Pre-commit
+
+When you commit changes:
+
+1. Run `git commit -m "Your message"`
+2. Pre-commit runs checks automatically
+3. If checks fail:
+   - Many issues are auto-fixed (formatting, etc.)
+   - Review the auto-fixed files
+   - Stage the fixed files: `git add <files>`
+   - Re-run the commit
+4. Once all checks pass, the commit succeeds
+
+To manually run all checks:
+
+```bash
+pre-commit run --all-files
+```
+
+<Tip>
+  Run this before creating a pull request to ensure all files pass checks.
+</Tip>
+
+## Running the Development Server
+
+You're ready to run Kolibri!
+
+### Quick Start (Frontend + Backend)
+
+Build frontend assets and start the Django server:
+
+```bash
+pnpm run devserver
+```
+
+Access Kolibri at `http://127.0.0.1:8000/`
+
+### Hot Reload Mode (Faster Development)
+
+For faster frontend development with automatic reloading:
+
+```bash
+pnpm run devserver-hot
+```
+
+<Warning>
+  Some functionality (like right-to-left language support) is broken when hot-reload is enabled.
+</Warning>
+
+### Build Specific Plugins Only
+
+To save resources, build only specific plugins:
+
+```bash
+# Watch only the Learn plugin
+pnpm run devserver-hot learn
+
+# Build core and Learn plugin only
+pnpm run devserver core,learn
+```
+
+### Separate Servers (Backend Development)
+
+If working mainly on backend code, run servers separately:
+
+**Terminal 1 - Django devserver:**
+```bash
+pnpm run python-devserver
+```
+
+**Terminal 2 - Frontend watcher:**
+```bash
+pnpm run frontend-devserver
+```
+
+## Load Sample Data
+
+### Import Content
+
+Import the Kolibri QA channel (~350MB) for testing:
+
+1. Go to `http://127.0.0.1:8000/`
+2. Navigate to Device > Channels
+3. Import with token: `nakav-mafak`
+
+### Generate Test Users
+
+Auto-generate sample users, classes, and data:
+
+```bash
+kolibri manage generateuserdata
+```
+
+## Editor Configuration
+
+Kolibri includes an `.editorconfig` file for consistent code formatting. Install the EditorConfig plugin for your editor:
+
+- [Check editor support](http://editorconfig.org/#download)
+
+### Recommended Editor Plugins
+
+- **Vue.js** - Syntax highlighting and support
+- **ESLint** - JavaScript linting
+- **Prettier** - Code formatting
+- **stylelint** - CSS/SCSS linting
+
+## Vue.js Development Tools
+
+Install [Vue.js devtools (Legacy)](https://devtools-v6.vuejs.org/guide/installation.html#legacy) browser extension for debugging.
+
+<Note>
+  Kolibri uses Vue 2, so install the "Legacy" version of Vue devtools, not the latest version.
+</Note>
+
+## Next Steps
+
+Your development environment is ready! Here's what to explore next:
+
+<CardGroup cols={2}>
+  <Card title="Frontend Development" icon="code" href="/guides/frontend-development">
+    Learn Vue.js patterns, Design System, and composables
+  </Card>
+  <Card title="Backend Development" icon="server" href="/guides/backend-development">
+    Understand Django, ValuesViewset, and API patterns
+  </Card>
+  <Card title="Testing" icon="flask" href="/guides/testing">
+    Write tests with pytest and Jest
+  </Card>
+  <Card title="Plugin Development" icon="plug" href="/guides/plugin-development">
+    Create your first Kolibri plugin
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+### Node Sass Binding Error
+
+If you get "Node Sass could not find a binding" error:
+
+```bash
+npm rebuild node-sass
+```
+
+### Pre-commit Issues with Git Clients
+
+If pre-commit fails with alternative Git clients (like GitUp):
+
+```bash
+pre-commit uninstall
+```
+
+### Database Migration Errors
+
+If migrations fail, ensure:
+- Your virtual environment is active
+- Python dependencies are installed
+- `KOLIBRI_RUN_MODE` is set
+
+## Additional Resources
+
+- [Kolibri Design System](https://design-system.learningequality.org/)
+- [Vue.js 2 Guide](https://v2.vuejs.org/v2/guide/)
+- [Django Documentation](https://docs.djangoproject.com/)
+- [pytest Documentation](https://docs.pytest.org/)

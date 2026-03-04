@@ -1,0 +1,707 @@
+---
+title: Component Library
+description: Kolibri Design System components and shared UI components including KButton, KModal, KTextbox, CoreTable, and more
+---
+
+Kolibri provides a comprehensive component library built on the Kolibri Design System (KDS). Before creating new components, always check for existing components in this hierarchy:
+
+1. **Kolibri Design System** - Primary UI components
+2. **Kolibri Core Components** - Application-specific shared components
+3. **Kolibri Common Components** - Plugin-shared components
+
+## Kolibri Design System Components
+
+The Kolibri Design System provides the primary UI component library. Full documentation is available at [design-system.learningequality.org](https://design-system.learningequality.org/).
+
+### Common Components
+
+#### KButton
+
+Primary button component with consistent styling and accessibility.
+
+```vue
+<template>
+  <KButton
+    text="Save"
+    :primary="true"
+    @click="handleSave"
+  />
+</template>
+
+<script>
+import { KButton } from 'kolibri-design-system/lib/KButton';
+
+export default {
+  components: { KButton },
+  setup() {
+    function handleSave() {
+      // Handle save
+    }
+    return { handleSave };
+  },
+};
+</script>
+```
+
+**Props:**
+- **text**: Button text (string)
+- **primary**: Primary button styling (boolean, default: `true`)
+- **appearance**: Button style - `'raised-button'`, `'flat-button'`, `'basic-link'` (string)
+- **disabled**: Whether button is disabled (boolean)
+- **icon**: Icon token to display (string)
+- **iconAfter**: Icon token to display after text (string)
+
+**Events:**
+- **click**: Emitted when button is clicked
+
+#### KModal
+
+Modal dialog component.
+
+```vue
+<template>
+  <KModal
+    v-if="showModal"
+    :title="modalTitle"
+    :submitText="$tr('save')"
+    :cancelText="$tr('cancel')"
+    @submit="handleSubmit"
+    @cancel="showModal = false"
+  >
+    <p>Modal content goes here</p>
+  </KModal>
+</template>
+
+<script>
+import { ref } from 'vue';
+import { KModal } from 'kolibri-design-system/lib/KModal';
+
+export default {
+  components: { KModal },
+  setup() {
+    const showModal = ref(false);
+    const modalTitle = ref('Edit Item');
+
+    function handleSubmit() {
+      // Handle submit
+      showModal.value = false;
+    }
+
+    return {
+      showModal,
+      modalTitle,
+      handleSubmit,
+    };
+  },
+};
+</script>
+```
+
+**Props:**
+- **title**: Modal title (string)
+- **submitText**: Submit button text (string)
+- **cancelText**: Cancel button text (string)
+- **submitDisabled**: Whether submit is disabled (boolean)
+- **size**: Modal size - `'small'`, `'medium'`, `'large'` (string, default: `'medium'`)
+
+**Events:**
+- **submit**: Emitted when submit button clicked
+- **cancel**: Emitted when cancel button clicked or modal is dismissed
+
+**Slots:**
+- **default**: Main modal content
+- **actions**: Custom action buttons (replaces submit/cancel)
+
+#### KTextbox
+
+Text input component with validation support.
+
+```vue
+<template>
+  <KTextbox
+    v-model="username"
+    :label="$tr('username')"
+    :placeholder="$tr('enterUsername')"
+    :invalid="usernameInvalid"
+    :invalidText="usernameError"
+    :maxlength="30"
+    @blur="validateUsername"
+  />
+</template>
+
+<script>
+import { ref } from 'vue';
+import { KTextbox } from 'kolibri-design-system/lib/KTextbox';
+
+export default {
+  components: { KTextbox },
+  setup() {
+    const username = ref('');
+    const usernameInvalid = ref(false);
+    const usernameError = ref('');
+
+    function validateUsername() {
+      if (username.value.length < 3) {
+        usernameInvalid.value = true;
+        usernameError.value = 'Username too short';
+      } else {
+        usernameInvalid.value = false;
+        usernameError.value = '';
+      }
+    }
+
+    return {
+      username,
+      usernameInvalid,
+      usernameError,
+      validateUsername,
+    };
+  },
+};
+</script>
+```
+
+**Props:**
+- **value** / **modelValue**: Input value (string)
+- **label**: Input label (string)
+- **placeholder**: Placeholder text (string)
+- **type**: Input type - `'text'`, `'password'`, `'email'`, etc. (string)
+- **invalid**: Whether input is invalid (boolean)
+- **invalidText**: Error message to display (string)
+- **disabled**: Whether input is disabled (boolean)
+- **maxlength**: Maximum length (number)
+- **autofocus**: Whether to autofocus (boolean)
+
+**Events:**
+- **input**: Emitted on input change
+- **blur**: Emitted on blur
+- **focus**: Emitted on focus
+
+#### KSelect
+
+Dropdown select component.
+
+```vue
+<template>
+  <KSelect
+    v-model="selectedValue"
+    :label="$tr('selectOption')"
+    :options="options"
+    :placeholder="$tr('chooseOne')"
+  />
+</template>
+
+<script>
+import { ref } from 'vue';
+import { KSelect } from 'kolibri-design-system/lib/KSelect';
+
+export default {
+  components: { KSelect },
+  setup() {
+    const selectedValue = ref(null);
+    const options = [
+      { label: 'Option 1', value: 'opt1' },
+      { label: 'Option 2', value: 'opt2' },
+      { label: 'Option 3', value: 'opt3' },
+    ];
+
+    return { selectedValue, options };
+  },
+};
+</script>
+```
+
+**Props:**
+- **value** / **modelValue**: Selected value
+- **options**: Array of `{ label, value }` objects (array)
+- **label**: Select label (string)
+- **placeholder**: Placeholder text (string)
+- **disabled**: Whether select is disabled (boolean)
+- **invalid**: Whether select is invalid (boolean)
+- **invalidText**: Error message (string)
+
+**Events:**
+- **change**: Emitted when selection changes
+
+#### KCheckbox
+
+Checkbox input component.
+
+```vue
+<template>
+  <KCheckbox
+    v-model="isChecked"
+    :label="$tr('agreeToTerms')"
+    :description="$tr('termsDescription')"
+  />
+</template>
+
+<script>
+import { ref } from 'vue';
+import { KCheckbox } from 'kolibri-design-system/lib/KCheckbox';
+
+export default {
+  components: { KCheckbox },
+  setup() {
+    const isChecked = ref(false);
+    return { isChecked };
+  },
+};
+</script>
+```
+
+**Props:**
+- **value** / **modelValue**: Checked state (boolean)
+- **label**: Checkbox label (string)
+- **description**: Additional description text (string)
+- **disabled**: Whether checkbox is disabled (boolean)
+
+**Events:**
+- **change**: Emitted when checked state changes
+
+#### KIcon
+
+Icon component using Material Design icons.
+
+```vue
+<template>
+  <KIcon icon="add" :color="$themeTokens.primary" />
+</template>
+
+<script>
+import { KIcon } from 'kolibri-design-system/lib/KIcon';
+
+export default {
+  components: { KIcon },
+};
+</script>
+```
+
+**Props:**
+- **icon**: Icon token name (string, required)
+- **color**: Icon color (string)
+
+Browse available icons at [design-system.learningequality.org/icons](https://design-system.learningequality.org/icons/).
+
+#### KCircularLoader
+
+Loading spinner component.
+
+```vue
+<template>
+  <div>
+    <KCircularLoader v-if="loading" />
+    <div v-else>Content loaded!</div>
+  </div>
+</template>
+
+<script>
+import { ref } from 'vue';
+import { KCircularLoader } from 'kolibri-design-system/lib/loaders';
+
+export default {
+  components: { KCircularLoader },
+  setup() {
+    const loading = ref(true);
+    return { loading };
+  },
+};
+</script>
+```
+
+**Props:**
+- **size**: Loader size in pixels (number, default: 32)
+- **delay**: Delay before showing in ms (number, default: 0)
+
+#### KGrid / KGridItem
+
+Responsive grid layout system.
+
+```vue
+<template>
+  <KGrid>
+    <KGridItem :layout12="{ span: 6 }">
+      <p>Left column (50%)</p>
+    </KGridItem>
+    <KGridItem :layout12="{ span: 6 }">
+      <p>Right column (50%)</p>
+    </KGridItem>
+  </KGrid>
+</template>
+
+<script>
+import { KGrid, KGridItem } from 'kolibri-design-system/lib/KGrid';
+
+export default {
+  components: { KGrid, KGridItem },
+};
+</script>
+```
+
+**KGridItem Props:**
+- **layout12**: Layout object for 12-column grid - `{ span, alignment }`
+- **layout8**: Layout object for 8-column grid
+- **layout4**: Layout object for 4-column grid
+
+Grid automatically adapts based on viewport width:
+- Small screens: 4 columns
+- Medium screens: 8 columns
+- Large screens: 12 columns
+
+## Kolibri Core Components
+
+Core application components located in `packages/kolibri/components/`.
+
+### CoreTable
+
+Table component for displaying tabular data.
+
+**Source:** `packages/kolibri/components/CoreTable.vue`
+
+```vue
+<template>
+  <CoreTable>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Role</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr v-for="user in users" :key="user.id">
+        <td>{{ user.name }}</td>
+        <td>{{ user.role }}</td>
+        <td>
+          <KButton text="Edit" @click="editUser(user.id)" />
+        </td>
+      </tr>
+    </tbody>
+  </CoreTable>
+</template>
+
+<script>
+import CoreTable from 'kolibri/components/CoreTable';
+import { KButton } from 'kolibri-design-system/lib/KButton';
+
+export default {
+  components: { CoreTable, KButton },
+  props: ['users'],
+  setup() {
+    function editUser(id) {
+      // Handle edit
+    }
+    return { editUser };
+  },
+};
+</script>
+```
+
+**Features:**
+- Responsive design
+- Theme-aware styling
+- Accessible markup
+
+### BottomAppBar
+
+Fixed bottom navigation bar.
+
+**Source:** `packages/kolibri/components/BottomAppBar.vue`
+
+```vue
+<template>
+  <BottomAppBar>
+    <KButton text="Cancel" @click="handleCancel" />
+    <KButton text="Save" primary @click="handleSave" />
+  </BottomAppBar>
+</template>
+
+<script>
+import BottomAppBar from 'kolibri/components/BottomAppBar';
+import { KButton } from 'kolibri-design-system/lib/KButton';
+
+export default {
+  components: { BottomAppBar, KButton },
+  setup() {
+    function handleCancel() {
+      // Handle cancel
+    }
+    function handleSave() {
+      // Handle save
+    }
+    return { handleCancel, handleSave };
+  },
+};
+</script>
+```
+
+**Slots:**
+- **default**: Content to display in the bar
+
+**Features:**
+- Fixed to bottom of viewport
+- Responsive sizing
+- Theme-aware styling
+- Material Design elevation
+
+### FilterTextbox
+
+Textbox with filter icon for search/filter functionality.
+
+**Source:** `packages/kolibri/components/FilterTextbox.vue`
+
+```vue
+<template>
+  <FilterTextbox
+    v-model="searchQuery"
+    :placeholder="$tr('searchPlaceholder')"
+    @input="handleSearch"
+  />
+</template>
+
+<script>
+import { ref } from 'vue';
+import FilterTextbox from 'kolibri/components/FilterTextbox';
+
+export default {
+  components: { FilterTextbox },
+  setup() {
+    const searchQuery = ref('');
+
+    function handleSearch() {
+      // Perform search with searchQuery.value
+    }
+
+    return { searchQuery, handleSearch };
+  },
+};
+</script>
+```
+
+**Props:**
+- **value** / **modelValue**: Search value (string)
+- **placeholder**: Placeholder text (string)
+
+**Events:**
+- **input**: Emitted on input change
+
+### DownloadButton
+
+Button for downloading resources with loading state.
+
+**Source:** `packages/kolibri/components/DownloadButton.vue`
+
+```vue
+<template>
+  <DownloadButton
+    :files="downloadFiles"
+    @download="handleDownload"
+  />
+</template>
+
+<script>
+import DownloadButton from 'kolibri/components/DownloadButton';
+
+export default {
+  components: { DownloadButton },
+  setup() {
+    const downloadFiles = [
+      { url: '/api/file/1', name: 'document.pdf' },
+    ];
+
+    function handleDownload() {
+      // Handle download completion
+    }
+
+    return { downloadFiles, handleDownload };
+  },
+};
+</script>
+```
+
+**Props:**
+- **files**: Array of file objects with `url` and `name` (array)
+
+**Events:**
+- **download**: Emitted when download completes
+
+### AuthMessage
+
+Displays authentication-related messages.
+
+**Source:** `packages/kolibri/components/AuthMessage.vue`
+
+```vue
+<template>
+  <AuthMessage
+    :header="$tr('signInRequired')"
+    :details="$tr('signInToAccess')"
+  />
+</template>
+
+<script>
+import AuthMessage from 'kolibri/components/AuthMessage';
+
+export default {
+  components: { AuthMessage },
+};
+</script>
+```
+
+**Props:**
+- **header**: Message header (string)
+- **details**: Message details (string)
+
+## Kolibri Common Components
+
+Shared components used across plugins, located in `packages/kolibri-common/components/`.
+
+### AccordionContainer / AccordionItem
+
+Accordion/collapsible content sections.
+
+```vue
+<template>
+  <AccordionContainer>
+    <AccordionItem :title="$tr('section1')">
+      <p>Content for section 1</p>
+    </AccordionItem>
+    <AccordionItem :title="$tr('section2')">
+      <p>Content for section 2</p>
+    </AccordionItem>
+  </AccordionContainer>
+</template>
+
+<script>
+import AccordionContainer from 'kolibri-common/components/AccordionContainer';
+import AccordionItem from 'kolibri-common/components/AccordionItem';
+
+export default {
+  components: { AccordionContainer, AccordionItem },
+};
+</script>
+```
+
+**AccordionItem Props:**
+- **title**: Section title (string)
+- **expanded**: Whether initially expanded (boolean)
+
+## Using Theme Tokens
+
+All components should use theme tokens for styling instead of hard-coded colors.
+
+```vue
+<template>
+  <div :style="{ 
+    color: $themeTokens.text, 
+    backgroundColor: $themeTokens.surface 
+  }">
+    <span :style="{ color: $themeTokens.annotation }">
+      Secondary text
+    </span>
+  </div>
+</template>
+```
+
+**Common Theme Tokens:**
+- **$themeTokens.primary**: Primary brand color
+- **$themeTokens.text**: Primary text color
+- **$themeTokens.annotation**: Secondary text color
+- **$themeTokens.surface**: Surface background color
+- **$themeTokens.error**: Error state color
+- **$themeTokens.success**: Success state color
+
+**Computed Classes for Pseudo-selectors:**
+
+For hover, focus, and other pseudo-classes:
+
+```vue
+<template>
+  <div :class="$computedClass(hoverStyle)">
+    Hover over me!
+  </div>
+</template>
+
+<script>
+export default {
+  computed: {
+    hoverStyle() {
+      return {
+        ':hover': {
+          backgroundColor: this.$themeTokens.primaryDark,
+          color: this.$themeTokens.textInverted,
+        },
+      };
+    },
+  },
+};
+</script>
+```
+
+## Component Development Guidelines
+
+### File Structure
+
+- **Simple components**: `ComponentName.vue`
+- **Complex components**: `ComponentName/index.vue` with sub-components
+
+### Component Conventions
+
+1. **Use Composition API**: All new components should use `setup()`
+2. **Name matches filename**: Component `name` property must match file name
+3. **Props over state**: Keep components stateless when possible
+4. **Internationalize text**: Use `createTranslator` for all user-visible text
+5. **Scoped styles**: Always use scoped `<style>` blocks
+6. **Theme tokens**: Never hard-code colors
+7. **RTL support**: Avoid inline directional styles; use style blocks
+
+### Internationalization Example
+
+```vue
+<template>
+  <div>
+    <h1>{{ title$() }}</h1>
+    <p>{{ description$() }}</p>
+  </div>
+</template>
+
+<script>
+import { createTranslator } from 'kolibri/utils/i18n';
+
+const strings = createTranslator('ComponentStrings', {
+  title: {
+    message: 'Welcome',
+    context: 'Page heading',
+  },
+  description: {
+    message: 'This is the description',
+    context: 'Page description',
+  },
+});
+
+export default {
+  name: 'MyComponent',
+  setup() {
+    const { title$, description$ } = strings;
+    return { title$, description$ };
+  },
+};
+</script>
+```
+
+## Best Practices
+
+1. **Always search first**: Check KDS, core, and common components before creating new ones
+2. **Wrap, don't rewrite**: If a component does 80% of what you need, wrap it
+3. **Use KGrid**: For layout, use `KGrid` instead of flexbox or floats
+4. **Responsive composables**: Use `useKResponsiveWindow` instead of media queries
+5. **Theme-aware**: Always use `$themeTokens` for colors
+6. **Accessible**: Follow WCAG guidelines and use semantic HTML
+7. **Test components**: Write unit tests using Vue Testing Library
+
+## See Also
+
+- [Kolibri Design System Documentation](https://design-system.learningequality.org/)
+- [Frontend Development Guide](/guides/frontend-development)
+- [Vue Composables](/api/frontend/composables)
+- [Internationalization Guide](/guides/internationalization)

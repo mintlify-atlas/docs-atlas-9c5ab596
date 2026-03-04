@@ -1,0 +1,354 @@
+---
+title: "Content & Channels"
+description: "API endpoints for content nodes, channel metadata, and content tree navigation"
+---
+
+## Channel Metadata
+
+### List Channels
+
+Retrieve a list of all available channels.
+
+```bash GET /api/content/channel
+curl http://localhost:8080/api/content/channel
+```
+
+#### Query Parameters
+
+<ParamField query="available" type="boolean">
+  Filter by content availability (true for locally available channels)
+</ParamField>
+
+<ParamField query="contains_exercise" type="boolean">
+  Filter channels that contain exercises
+</ParamField>
+
+<ParamField query="contains_quiz" type="boolean">
+  Filter channels that contain quizzes
+</ParamField>
+
+#### Response Fields
+
+<ResponseField name="id" type="string">
+  Channel unique identifier
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Channel name
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Channel description
+</ResponseField>
+
+<ResponseField name="tagline" type="string">
+  Short tagline for the channel
+</ResponseField>
+
+<ResponseField name="author" type="string">
+  Channel author/organization
+</ResponseField>
+
+<ResponseField name="version" type="integer">
+  Channel version number
+</ResponseField>
+
+<ResponseField name="thumbnail" type="string">
+  URL to channel thumbnail image
+</ResponseField>
+
+<ResponseField name="available" type="boolean">
+  Whether channel content is locally available
+</ResponseField>
+
+<ResponseField name="total_resource_count" type="integer">
+  Total number of resources in the channel
+</ResponseField>
+
+<ResponseField name="published_size" type="integer">
+  Total size of channel in bytes
+</ResponseField>
+
+<ResponseField name="last_updated" type="string">
+  ISO 8601 timestamp of last update
+</ResponseField>
+
+<ResponseField name="lang_code" type="string">
+  Primary language code
+</ResponseField>
+
+<ResponseField name="included_languages" type="array">
+  Array of language IDs included in the channel
+</ResponseField>
+
+<ResponseField name="included_categories" type="array">
+  Array of content categories
+</ResponseField>
+
+### Get Channel
+
+Retrieve details of a specific channel.
+
+```bash GET /api/content/channel/:id
+curl http://localhost:8080/api/content/channel/channel-uuid-here
+```
+
+## Content Nodes
+
+### List Content Nodes
+
+Retrieve content nodes with extensive filtering options.
+
+```bash GET /api/content/contentnode
+curl "http://localhost:8080/api/content/contentnode?channel_id=channel-uuid&kind=exercise"
+```
+
+#### Query Parameters
+
+<ParamField query="channel_id" type="string">
+  Filter by channel UUID
+</ParamField>
+
+<ParamField query="parent" type="string">
+  Filter by parent node UUID
+</ParamField>
+
+<ParamField query="kind" type="string">
+  Filter by content kind: `topic`, `exercise`, `video`, `audio`, `document`, `html5`
+</ParamField>
+
+<ParamField query="include_coach_content" type="boolean">
+  Include coach-only content (default: false)
+</ParamField>
+
+<ParamField query="keywords" type="string">
+  Search by keywords in title or description
+</ParamField>
+
+<ParamField query="categories" type="string">
+  Filter by category labels (comma-separated)
+</ParamField>
+
+<ParamField query="grade_levels" type="string">
+  Filter by grade levels (comma-separated)
+</ParamField>
+
+<ParamField query="learning_activities" type="string">
+  Filter by learning activities (comma-separated)
+</ParamField>
+
+<ParamField query="accessibility_labels" type="string">
+  Filter by accessibility labels (comma-separated)
+</ParamField>
+
+<ParamField query="max_results" type="integer">
+  Maximum number of results for cursor pagination
+</ParamField>
+
+#### Response Fields
+
+<ResponseField name="id" type="string">
+  Content node unique identifier
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  Content title
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Content description
+</ResponseField>
+
+<ResponseField name="kind" type="string">
+  Content kind/type
+</ResponseField>
+
+<ResponseField name="content_id" type="string">
+  Content identifier (shared across versions)
+</ResponseField>
+
+<ResponseField name="channel_id" type="string">
+  Channel UUID
+</ResponseField>
+
+<ResponseField name="author" type="string">
+  Content author
+</ResponseField>
+
+<ResponseField name="available" type="boolean">
+  Whether content files are locally available
+</ResponseField>
+
+<ResponseField name="coach_content" type="boolean">
+  Whether this is coach-only content
+</ResponseField>
+
+<ResponseField name="parent" type="string">
+  Parent node UUID
+</ResponseField>
+
+<ResponseField name="lang" type="object">
+  Language object with lang_code, lang_name, lang_direction
+</ResponseField>
+
+<ResponseField name="files" type="array">
+  Array of file objects with checksum, extension, file_size, storage_url
+</ResponseField>
+
+<ResponseField name="assessmentmetadata" type="object">
+  Assessment metadata for exercises (mastery_model, randomize, etc.)
+</ResponseField>
+
+<ResponseField name="tags" type="array">
+  Array of tag names
+</ResponseField>
+
+<ResponseField name="thumbnail" type="string">
+  URL to thumbnail image
+</ResponseField>
+
+<ResponseField name="duration" type="integer">
+  Duration in seconds for time-based content
+</ResponseField>
+
+<ResponseField name="learning_activities" type="array">
+  Array of learning activity labels
+</ResponseField>
+
+<ResponseField name="grade_levels" type="array">
+  Array of grade level labels
+</ResponseField>
+
+<ResponseField name="categories" type="array">
+  Array of category labels
+</ResponseField>
+
+### Get Content Node
+
+Retrieve a specific content node by ID.
+
+```bash GET /api/content/contentnode/:id
+curl http://localhost:8080/api/content/contentnode/node-uuid-here
+```
+
+### Search Content
+
+Search for content nodes by keyword.
+
+```bash GET /api/content/contentnode_search
+curl "http://localhost:8080/api/content/contentnode_search?search=mathematics&max_results=20"
+```
+
+#### Query Parameters
+
+<ParamField query="search" type="string" required>
+  Search query string
+</ParamField>
+
+<ParamField query="max_results" type="integer">
+  Maximum number of results (default: 30)
+</ParamField>
+
+<ParamField query="channel_id" type="string">
+  Restrict search to specific channel
+</ParamField>
+
+<ParamField query="kind" type="string">
+  Filter by content kind
+</ParamField>
+
+## Content Node Tree
+
+### Get Content Tree
+
+Retrieve a nested tree structure of content nodes.
+
+```bash GET /api/content/contentnode_tree/:id
+curl "http://localhost:8080/api/content/contentnode_tree/node-uuid-here?depth=2"
+```
+
+#### Query Parameters
+
+<ParamField query="depth" type="integer">
+  Tree depth to return (1 or 2, default: 2)
+</ParamField>
+
+<ParamField query="next__gt" type="integer">
+  Left position value for pagination
+</ParamField>
+
+#### Response Structure
+
+Returns a nested object with:
+
+<ResponseField name="id" type="string">
+  Node ID
+</ResponseField>
+
+<ResponseField name="children" type="object">
+  Pagination object with results array and more object for pagination
+</ResponseField>
+
+<ResponseField name="children.results" type="array">
+  Array of child nodes, which may have their own nested children
+</ResponseField>
+
+<ResponseField name="children.more" type="object">
+  Pagination info with id and params for next page
+</ResponseField>
+
+### Random Content Nodes
+
+Get random content nodes from the filtered set.
+
+```bash GET /api/content/contentnode/random
+curl "http://localhost:8080/api/content/contentnode/random?channel_id=channel-uuid&max_results=5"
+```
+
+### Content Recommendations
+
+Get content recommendations similar to a specific node.
+
+```bash GET /api/content/contentnode/:id/recommendations_for
+curl http://localhost:8080/api/content/contentnode/node-uuid-here/recommendations_for
+```
+
+## Files
+
+Files are embedded within ContentNode responses. Each file object contains:
+
+<ResponseField name="id" type="string">
+  File unique identifier
+</ResponseField>
+
+<ResponseField name="checksum" type="string">
+  File checksum/hash
+</ResponseField>
+
+<ResponseField name="extension" type="string">
+  File extension (e.g., mp4, pdf)
+</ResponseField>
+
+<ResponseField name="file_size" type="integer">
+  File size in bytes
+</ResponseField>
+
+<ResponseField name="storage_url" type="string">
+  URL to access the file
+</ResponseField>
+
+<ResponseField name="preset" type="string">
+  File preset type (e.g., high_res_video, thumbnail)
+</ResponseField>
+
+<ResponseField name="available" type="boolean">
+  Whether file is locally available
+</ResponseField>
+
+<ResponseField name="supplementary" type="boolean">
+  Whether this is a supplementary file
+</ResponseField>
+
+<ResponseField name="thumbnail" type="boolean">
+  Whether this file is a thumbnail
+</ResponseField>

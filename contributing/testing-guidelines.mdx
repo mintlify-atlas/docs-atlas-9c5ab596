@@ -1,0 +1,402 @@
+---
+title: Testing Guidelines
+description: Testing best practices, TDD methodology, and coverage requirements for Kolibri development
+---
+
+## Overview
+
+Kolibri uses comprehensive testing for both frontend and backend code. Testing is a critical part of our development process and helps ensure code quality, prevent regressions, and document expected behavior.
+
+<Note>
+**We strongly encourage comprehensive testing** of all frontend and backend code.
+</Note>
+
+## Test-Driven Development (TDD)
+
+We encourage using Test-Driven Development (TDD) and the **Red/Green/Refactor** cycle:
+
+1. **Red**: Write a failing test first that describes the desired behavior
+2. **Green**: Write the minimum code to make the test pass
+3. **Refactor**: Clean up the code while keeping tests passing
+
+### When to Use TDD
+
+This approach is particularly valuable for:
+
+- **Bug fixes**: Write a test that reproduces the bug (fails), then fix it (passes)
+- **Incremental feature building**: Add one test at a time for each piece of functionality
+- **API changes**: Test the interface before implementation
+
+<Warning>
+**For bug fixes, always write a failing test first** to confirm the bug exists, then fix it. This ensures the bug is actually fixed and prevents regressions.
+</Warning>
+
+### Why TDD Works
+
+- **Confidence**: Tests prove your code works and prevent regressions
+- **Design**: Writing tests first leads to better API design
+- **Documentation**: Tests document how code should behave
+- **Debugging**: Failing tests pinpoint exactly what's broken
+- **Refactoring**: Tests give you confidence to improve code structure
+
+## TDD Example: Bug Fix
+
+Here's a simplified example of the TDD workflow for fixing a bug:
+
+### Step 1 - Red: Write a Failing Test
+
+Write a failing test that demonstrates the bug:
+
+```python
+def test_user_can_update_own_profile(self):
+    """Test that user can update their own full name"""
+    self.client.force_authenticate(user=self.user)
+    url = reverse('kolibri:core:facilityuser-detail', kwargs={'pk': self.user.id})
+    response = self.client.patch(url, {'full_name': 'New Name'})
+    self.assertEqual(response.status_code, status.HTTP_200_OK)
+    self.user.refresh_from_db()
+    self.assertEqual(self.user.full_name, 'New Name')
+```
+
+Run the test - it should fail, confirming the bug exists.
+
+### Step 2 - Green: Fix the Code
+
+Fix the code to make the test pass:
+
+```python
+# In api.py
+class UserViewSet(viewsets.ModelViewSet):
+    def get_permissions(self):
+        if self.action == 'partial_update':
+            # Allow users to update their own profile
+            return [IsAuthenticated()]
+        return super().get_permissions()
+```
+
+Run the test again - it should now pass.
+
+<Note>
+This is a simplified example. Kolibri uses its own permission system (`KolibriAuthPermissions` from `kolibri.core.auth.api`) rather than standard DRF permission classes.
+</Note>
+
+### Step 3 - Refactor: Clean Up
+
+Review the fix and ensure it's clean and maintainable. Run all tests to ensure nothing else broke.
+
+## Testing Best Practices
+
+### General Principles
+
+1. **Write tests for all new code**: Both frontend and backend code should be tested
+2. **Use descriptive test names**: Test name should describe what it tests
+3. **One assertion per test** (when practical): Makes failures easier to diagnose
+4. **Test edge cases**: Empty lists, None values, invalid input, etc.
+5. **Keep tests fast**: Use mocks for expensive operations
+6. **Keep tests isolated**: Each test should be independent
+7. **Tests assert behavior, not implementation**: Test inputs and outputs, not internal implementation details
+
+<Warning>
+**Do not weaken existing tests.** Do not modify or delete existing tests unless the behavior they test has been intentionally changed. If new code breaks existing tests, fix the code, not the tests. Never loosen assertions, add workarounds, or reduce coverage to make a failing test pass.
+</Warning>
+
+### What to Test
+
+Unit tests and integration tests should be written to ensure coverage of critical, brittle, complicated, or otherwise risky paths through the code and user experience.
+
+<Tip>
+**Intentional, thoughtful coverage of these critical paths is more important than global percentage of code covered.**
+</Tip>
+
+Nearly all code is amenable to testing. You should write tests for:
+
+- Component behavior and user interactions
+- State management (composables, computed properties)
+- API calls and data transformations
+- Business logic and utility functions
+- Edge cases and error handling
+
+**Avoid testing:**
+
+- Purely declarative templates (just the rendering result without logic)
+- Third-party library internals
+
+## Frontend Testing
+
+### Testing Framework
+
+Kolibri uses [Jest](https://jestjs.io/) as the test runner for frontend tests.
+
+### Testing Library
+
+<Note>
+**Use Vue Testing Library for all new tests.** Vue Test Utils is legacy and being phased out.
+</Note>
+
+- **New tests**: Use [Vue Testing Library](https://testing-library.com/docs/vue-testing-library/intro/)
+- **Existing tests**: vue-test-utils tests remain but should not be extended
+
+Vue Testing Library (VTL) is based on the philosophy that "The more your tests resemble the way your software is used, the more confidence they can give you." Rather than dealing with instances of rendered Vue components, it works with actual DOM nodes and simulates interactions the same way users would.
+
+### Running Frontend Tests
+
+```bash
+# Run all frontend tests
+pnpm run test
+
+# Run specific test file
+pnpm run test-jest -- path/to/file.spec.js
+
+# Run tests matching a pattern
+pnpm run test-jest -- --testPathPattern learn
+```
+
+### Frontend Test Example
+
+```javascript
+import { render, screen } from '@testing-library/vue';
+import Heading from './Heading.vue';
+
+// describe, it, expect are Jest globals — no import needed
+describe('Heading', () => {
+  it('renders a heading', async () => {
+    render(Heading, {
+      props: {
+        text: 'Hello, world!',
+      },
+    });
+
+    expect(screen.getByRole('heading')).toHaveTextContent('Hello, world!');
+  });
+});
+```
+
+### Frontend Testing Best Practices
+
+#### File Organization
+
+Test files are located in `__tests__/` directories:
+
+```
+components/
+├── __tests__/
+│   ├── MyComponent.spec.js
+│   └── AnotherComponent.spec.js
+├── MyComponent.vue
+└── AnotherComponent.vue
+```
+
+#### Naming Conventions
+
+Test files should follow the naming convention: `<Name of the file being tested>.spec.js`
+
+#### Use `renderComponent` Function
+
+Define a `renderComponent` helper function to avoid repeating boilerplate:
+
+```javascript
+// Helper function to render the component with Vuex store
+const renderComponent = props => {
+  const { store = {}, ...componentProps } = props;
+
+  return render(TotalPoints, {
+    store: {
+      getters: {
+        totalPoints: () => store.totalPoints ?? 0,
+        currentUserId: () => store.currentUserId ?? "user-01",
+      },
+    },
+    props: componentProps,
+  });
+};
+
+// Usage in the test
+it('renders the total points', async () => {
+  renderComponent({
+    store: { totalPoints: 10 },
+    isActive: true,
+    showPoints: true,
+  });
+
+  expect(screen.getByText('10')).toBeInTheDocument();
+});
+```
+
+#### Add Smoke Tests
+
+Add a smoke test to every test suite that only renders the most basic example of a component. This ensures the component is not broken due to basic errors like missing imports or syntax errors.
+
+#### Use the `screen` Object
+
+For querying DOM nodes, use the `screen` object provided by `@testing-library/vue`:
+
+```javascript
+// ✅ Good
+render(<Example />)
+const errorMessage = screen.getByRole('alert')
+
+// ❌ Avoid
+const {getByRole} = render(Example)
+const errorMessage = getByRole('alert')
+```
+
+#### Prefer `userEvent` Over `fireEvent`
+
+[@testing-library/user-event](https://testing-library.com/docs/user-event/intro/) provides methods that resemble user interactions more closely than `fireEvent`.
+
+For example, `userEvent.type` triggers `keyDown`, `keyPress`, and `keyUp` events for each character, while `fireEvent.change` only triggers a single change event.
+
+#### Use `testing-library/jest-dom` Matchers
+
+[testing-library/jest-dom](https://github.com/testing-library/jest-dom) provides custom matchers that make tests more declarative:
+
+```javascript
+// ✅ Good
+expect(inputElement).toBeDisabled()
+expect(sampleElement).toHaveClass('active')
+expect(sampleElement).toHaveTextContent('Hello, world!')
+
+// ❌ Avoid
+expect(inputElement.disabled).toBeTruthy()
+expect(sampleElement.classList.contains('active')).toBeTruthy()
+expect(sampleElement.textContent).toBe('Hello, world!')
+```
+
+## Backend Testing
+
+### Testing Framework
+
+Kolibri uses [pytest](https://docs.pytest.org/en/latest/) as the test runner for backend tests.
+
+- **Django API tests**: Extend `APITestCase` from `rest_framework.test`
+- **Other Django tests**: Extend `django.test.TestCase`
+- **Non-Django code**: Use bare pytest-style function tests
+
+### Running Backend Tests
+
+```bash
+# Run all backend tests
+pytest
+
+# Run tests in a specific directory
+pytest kolibri/path/to/test/
+
+# Run specific test by name
+pytest kolibri/core/auth/test/test_permissions.py -k test_admin_can_delete_membership
+
+# Run tests in a specific class
+pytest kolibri/auth/test/test_permissions.py -k MembershipPermissionsTestCase
+
+# Use logical operators
+pytest kolibri/auth/test/test_permissions.py -k "MembershipPermissionsTestCase and test_admin_can_delete_membership"
+```
+
+### Backend Test Example
+
+```python
+from rest_framework import status
+from rest_framework.test import APITestCase
+from django.urls import reverse
+
+class UserProfileTestCase(APITestCase):
+    def setUp(self):
+        # Set up test data
+        self.user = FacilityUser.objects.create(username='testuser')
+
+    def test_user_can_update_own_profile(self):
+        """Test that user can update their own full name"""
+        self.client.force_authenticate(user=self.user)
+        url = reverse('kolibri:core:facilityuser-detail', kwargs={'pk': self.user.id})
+        response = self.client.patch(url, {'full_name': 'New Name'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.full_name, 'New Name')
+```
+
+### Backend Testing Best Practices
+
+- **Test through the API**: Backend tests should call API endpoints through Django's test client and assert on response data, not on internal method calls
+- **Use fixtures**: Use pytest fixtures or Django's `setUp()` method to create test data
+- **Test permissions**: Ensure API endpoints have appropriate authentication and authorization
+- **Test edge cases**: Empty querysets, invalid input, missing data, etc.
+- **Mock external services**: Use mocks for external APIs, file system operations, etc.
+
+## Mocking
+
+### When to Mock
+
+Mock only at hard boundaries:
+
+- Network calls
+- Filesystem operations
+- External services
+- Time-dependent operations (when testing time-specific behavior)
+
+<Warning>
+**Do not mock internal modules or classes** to isolate units—test them through the real call chain. If refactoring working code breaks a test, the test was wrong, not the code.
+</Warning>
+
+### Frontend Mocking
+
+Use `jest.fn()` and `jest.mock()` for mocking:
+
+```javascript
+// Mock a function
+const mockFn = jest.fn();
+
+// Mock a module
+jest.mock('../api/resource', () => ({
+  fetchData: jest.fn(() => Promise.resolve({ data: [] })),
+}));
+```
+
+### Backend Mocking
+
+Use `unittest.mock` or `pytest-mock` for mocking:
+
+```python
+from unittest.mock import patch, MagicMock
+
+@patch('kolibri.core.content.api.get_channel_data')
+def test_channel_list(mock_get_channel_data):
+    mock_get_channel_data.return_value = []
+    # Test code here
+```
+
+## Coverage Requirements
+
+<Tip>
+**Intentional, thoughtful coverage of critical paths is more important than global percentage of code covered.**
+</Tip>
+
+Focus test coverage on:
+
+- Critical business logic
+- Complex algorithms
+- Error handling and edge cases
+- Security-sensitive code
+- Code that has had bugs in the past
+- Public APIs and interfaces
+
+Don't obsess over 100% coverage. It's better to have well-written tests for critical code than superficial tests that achieve high coverage numbers.
+
+## Resources
+
+### Frontend Testing
+
+- [Vue Testing Library Documentation](https://testing-library.com/docs/vue-testing-library/intro/)
+- [Jest Documentation](https://jestjs.io/)
+- [Testing Library Queries](https://testing-library.com/docs/queries/about)
+- [User Event Documentation](https://testing-library.com/docs/user-event/intro)
+- [Common Mistakes with Testing Library](https://kentcdodds.com/blog/common-mistakes-with-react-testing-library)
+
+### Backend Testing
+
+- [pytest Documentation](https://docs.pytest.org/en/latest/)
+- [Django Testing Documentation](https://docs.djangoproject.com/en/stable/topics/testing/)
+- [Django REST Framework Testing](https://www.django-rest-framework.org/api-guide/testing/)
+
+### General Testing
+
+- [Test-Driven Development](https://en.wikipedia.org/wiki/Test-driven_development)
+- [Testing Best Practices](https://testing.googleblog.com/)

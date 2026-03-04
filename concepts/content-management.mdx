@@ -1,0 +1,455 @@
+---
+title: Content Management
+description: Understanding content channels, metadata structures, import/sync operations, and content distribution in Kolibri
+---
+
+Kolibri manages educational content through a channel-based system. Content is organized into channels, each containing a hierarchical tree of content nodes representing videos, exercises, documents, and other learning materials.
+
+## Content Channels
+
+### Channel Metadata
+
+Channels are represented by the `ChannelMetadata` model:
+
+```python
+class ChannelMetadata(models.Model):
+    """Holds metadata about all existing content databases that exist locally."""
+    
+    id = UUIDField(primary_key=True)
+    name = models.CharField(max_length=200)
+    description = models.CharField(max_length=400, blank=True)
+    tagline = models.CharField(max_length=150, blank=True, null=True)
+    author = models.CharField(max_length=400, blank=True)
+    version = models.IntegerField(default=0)
+    thumbnail = models.TextField(blank=True)
+    last_updated = DateTimeTzField(null=True, blank=True)
+    min_schema_version = models.CharField(max_length=50)
+    root = UUIDField()  # ID of the root ContentNode
+```
+
+### Channel Databases
+
+Each channel is stored as a separate SQLite database file:
+
+- Located in `KOLIBRI_HOME/content/databases/`
+- Named using the channel ID: `{channel_id}.sqlite3`
+- Contains all content metadata for that channel
+- Schema version tracked for backwards compatibility
+
+```python
+def get_channel_ids_for_content_database_dir(content_database_dir):
+    """Returns a list of channel IDs for channel databases in a directory."""
+    
+    if not os.path.isdir(content_database_dir):
+        return []
+    
+    # Get all database files
+    db_list = fnmatch.filter(os.listdir(content_database_dir), "*.sqlite3")
+    db_names = [db.split(".sqlite3", 1)[0] for db in db_list]
+    
+    # Validate UUIDs
+    valid_db_names = [name for name in db_names if is_valid_uuid(name)]
+    
+    return valid_db_names
+```
+
+<Info>
+Channel databases are read-only after import. Updates require importing a new version of the channel.
+</Info>
+
+## Content Nodes
+
+### ContentNode Model
+
+`ContentNode` is the primary object type in a content database:
+
+```python
+class ContentNode(MPTTModel):
+    """
+    Represents videos, exercises, audio, documents, and other content items
+    that exist as nodes in content channels.
+    """
+    
+    id = UUIDField(primary_key=True)
+    parent = TreeForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        related_name="children",
+        on_delete=models.CASCADE,
+    )
+    
+    # Core metadata
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True, null=True)
+    kind = models.CharField(max_length=200, choices=content_kinds.choices)
+    
+    # Content identification
+    content_id = UUIDField(db_index=True)  # Tracks user interactions
+    channel_id = UUIDField(db_index=True)
+    
+    # Authorship and licensing
+    author = models.CharField(max_length=200, blank=True)
+    license_name = models.CharField(max_length=50, null=True, blank=True)
+    license_owner = models.CharField(max_length=200, blank=True)
+    
+    # Availability and visibility
+    available = models.BooleanField(default=False)
+    coach_content = models.BooleanField(default=False)
+    
+    # Metadata labels
+    grade_levels = models.TextField(blank=True, null=True)
+    resource_types = models.TextField(blank=True, null=True)
+    learning_activities = models.TextField(blank=True, null=True)
+    accessibility_labels = models.TextField(blank=True, null=True)
+    
+    # Language and localization
+    lang = models.ForeignKey("Language", blank=True, null=True, on_delete=models.CASCADE)
+    
+    # Duration (in seconds)
+    duration = models.PositiveIntegerField(null=True, blank=True)
+```
+
+### Content ID vs. Node ID
+
+Kolibri distinguishes between two types of identifiers:
+
+- **Node ID** (`id`): Unique identifier for this specific content node instance
+- **Content ID** (`content_id`): Shared identifier for substantially similar content
+
+```python
+# Multiple nodes can share the same content_id
+# This allows tracking user progress across duplicate content
+node1 = ContentNode.objects.get(id='abc-123')
+node2 = ContentNode.objects.get(id='def-456')
+
+# Both might have the same content_id
+assert node1.content_id == node2.content_id
+
+# User interactions with either node are tracked together
+```
+
+<Tip>
+Use `content_id` when tracking user interactions to properly handle duplicate content across channels.
+</Tip>
+
+### Tree Structure
+
+Content nodes form a tree hierarchy using MPTT (Modified Preorder Tree Traversal):
+
+```python
+# Get all descendants of a topic
+topic = ContentNode.objects.get(id='topic-id')
+all_children = topic.get_descendants()
+
+# Get only direct children
+direct_children = topic.get_children()
+
+# Get ancestors (breadcrumb trail)
+path = node.get_ancestors(include_self=True)
+```
+
+## Content Files
+
+### File Model
+
+Each content node can have multiple associated files:
+
+```python
+class File(models.Model):
+    """Associates content nodes with local files."""
+    
+    id = UUIDField(primary_key=True)
+    contentnode = models.ForeignKey(
+        "ContentNode", related_name="files", on_delete=models.CASCADE
+    )
+    local_file = models.ForeignKey(
+        "LocalFile", related_name="files", on_delete=models.CASCADE
+    )
+    
+    # File type and purpose
+    preset = models.CharField(max_length=150, choices=format_presets.choices)
+    supplementary = models.BooleanField(default=False)
+    thumbnail = models.BooleanField(default=False)
+    priority = models.IntegerField(blank=True, null=True)
+    
+    # Language for multi-language content
+    lang = models.ForeignKey("Language", blank=True, null=True, on_delete=models.CASCADE)
+```
+
+### LocalFile Model
+
+Physical files are tracked separately:
+
+```python
+class LocalFile(models.Model):
+    """Tracks the local state of files on device storage."""
+    
+    # ID is the checksum of the file
+    id = models.CharField(max_length=32, primary_key=True)
+    extension = models.CharField(max_length=40, choices=file_formats.choices)
+    available = models.BooleanField(default=False)
+    file_size = models.IntegerField(blank=True, null=True)
+```
+
+<Info>
+Multiple `File` objects can reference the same `LocalFile`, enabling deduplication when the same file is used across multiple content nodes.
+</Info>
+
+## Content Import
+
+### Import Process
+
+1. **Download/Copy Channel Database**: Obtain the channel SQLite database
+2. **Read Metadata**: Extract channel metadata and content tree structure
+3. **Copy to Local Database**: Import metadata into Kolibri's database
+4. **Download Content Files**: Fetch associated media files
+5. **Update Availability**: Mark content as available once files are present
+
+```bash
+# Import a channel from Kolibri Studio
+kolibri manage importchannel network {channel_id}
+
+# Import from a local drive
+kolibri manage importchannel disk {channel_id} /path/to/drive
+
+# Import specific content nodes
+kolibri manage importcontent network {channel_id} --node_ids={node_id}
+```
+
+### Schema Versioning
+
+Kolibri supports multiple content schema versions:
+
+```python
+# Content schema versions
+VERSION_1 = "1"
+VERSION_2 = "2"
+VERSION_3 = "3"
+VERSION_4 = "4"
+VERSION_5 = "5"
+
+CONTENT_SCHEMA_VERSION = VERSION_5
+
+CONTENT_DB_SCHEMA_VERSIONS = [
+    VERSION_1,
+    VERSION_2,
+    VERSION_3,
+    VERSION_4,
+    VERSION_5,
+]
+```
+
+During import, Kolibri:
+
+1. Detects the schema version of the source database
+2. Uses SQLAlchemy to read the old schema
+3. Transforms data to the current schema version
+4. Infers missing fields for backwards compatibility
+
+```python
+def read_channel_metadata_from_db_file(channeldbpath):
+    """Read channel metadata from a database file."""
+    from kolibri.core.content.models import ChannelMetadata
+    
+    source = Bridge(sqlite_file_path=channeldbpath)
+    ChannelMetadataTable = source.get_table(ChannelMetadata)
+    
+    source_channel_metadata = dict(
+        source.execute(select(ChannelMetadataTable)).fetchone()
+    )
+    
+    # Track inferred schema version
+    source_channel_metadata["inferred_schema_version"] = source.schema_version
+    
+    source.end()
+    return source_channel_metadata
+```
+
+<Warning>
+When modifying content models, update the schema version and create appropriate migration logic for older channel databases.
+</Warning>
+
+## Content Metadata
+
+### Assessment Metadata
+
+Exercises and assessments have additional metadata:
+
+```python
+class AssessmentMetaData(models.Model):
+    """
+    Additional metadata for assessment content nodes.
+    Used for exercises, quizzes, and exams.
+    """
+    
+    id = UUIDField(primary_key=True)
+    contentnode = models.ForeignKey(
+        "ContentNode", related_name="assessmentmetadata", on_delete=models.CASCADE
+    )
+    
+    # Question bank
+    assessment_item_ids = JSONField(default=[])  # List of question IDs
+    number_of_assessments = models.IntegerField()  # Count for convenience
+    
+    # Mastery criteria
+    mastery_model = JSONField(default={})  # Defines completion criteria
+    
+    # Presentation
+    randomize = models.BooleanField(default=False)  # Randomize question order
+    is_manipulable = models.BooleanField(default=False)  # Can preview/fill answers
+```
+
+Example mastery model:
+
+```json
+{
+  "type": "m_of_n",
+  "m": 3,
+  "n": 5
+}
+```
+
+### Content Tags
+
+Content can be tagged for organization and search:
+
+```python
+class ContentTag(models.Model):
+    id = UUIDField(primary_key=True)
+    tag_name = models.CharField(max_length=30, blank=True)
+
+# Many-to-many relationship
+node.tags.add(tag)
+tagged_content = tag.tagged_content.all()
+```
+
+### Language Information
+
+Language metadata supports localization:
+
+```python
+class Language(models.Model):
+    id = models.CharField(max_length=14, primary_key=True)
+    lang_code = models.CharField(max_length=3, db_index=True)  # ISO 639-1/2/3
+    lang_subcode = models.CharField(max_length=10, blank=True)  # Regional variant
+    lang_name = models.CharField(max_length=100, blank=True)  # Localized name
+    lang_direction = models.CharField(
+        max_length=3,
+        choices=LANGUAGE_DIRECTIONS,
+        default="ltr"
+    )
+```
+
+## Content Discovery
+
+### Querying Content
+
+The `ContentNodeQueryset` provides powerful filtering:
+
+```python
+# Deduplicate by content_id
+unique_content = ContentNode.objects.dedupe_by_content_id()
+
+# Filter by content IDs
+matching_nodes = ContentNode.objects.filter_by_content_ids([id1, id2, id3])
+
+# Find content with specific metadata labels
+labeled_content = ContentNode.objects.has_all_labels(
+    "learning_activities",
+    ["read", "practice"]
+)
+```
+
+### Availability Tracking
+
+Kolibri tracks which content is available on the device:
+
+```python
+class ContentNode(base_models.ContentNode):
+    # Total available resources on device under this topic
+    on_device_resources = models.IntegerField(default=0, null=True, blank=True)
+    
+    # Total coach-only resources
+    num_coach_contents = models.IntegerField(default=0, null=True, blank=True)
+```
+
+### Channel Ordering
+
+Administrators can customize channel display order:
+
+```bash
+# Set channel position
+kolibri manage setchannelposition {channel_id} {position}
+
+# List all channels with their positions
+kolibri manage listchannels
+```
+
+## Content Sync
+
+Kolibri supports syncing content metadata and files between devices:
+
+### Peer Import
+
+Import content from another Kolibri device on the network:
+
+```bash
+# Discover devices
+kolibri manage listnetworklocations
+
+# Import from peer
+kolibri manage importchannel network {channel_id} --peer_id={peer_id}
+```
+
+### Partial Channels
+
+Channels can be partially imported:
+
+```python
+class ChannelMetadata(base_models.ChannelMetadata):
+    # Indicates not all content is imported
+    partial = models.BooleanField(default=False)
+    
+    # Tracks which nodes are available
+    published_size = models.IntegerField(default=0)
+    total_resource_count = models.IntegerField(default=0)
+    included_languages = JSONField(default=[])
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use content_id for user tracking">
+    Always use `content_id` rather than `id` when tracking user interactions to properly handle duplicate content.
+  </Accordion>
+  
+  <Accordion title="Check availability before rendering">
+    Verify `available=True` on content nodes and `available=True` on local files before attempting to display content.
+  </Accordion>
+  
+  <Accordion title="Handle missing metadata gracefully">
+    Many metadata fields are optional. Always provide fallbacks for missing data.
+  </Accordion>
+  
+  <Accordion title="Optimize tree queries">
+    Use MPTT methods (`get_descendants()`, `get_ancestors()`) for efficient tree traversal instead of recursive queries.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Architecture Overview" icon="building" href="/concepts/architecture">
+    Learn about Kolibri's overall architecture
+  </Card>
+  <Card title="User Roles" icon="users" href="/concepts/user-roles">
+    Understand permissions for content access
+  </Card>
+  <Card title="Content API" icon="code" href="/api/content">
+    Explore content API endpoints
+  </Card>
+  <Card title="Frontend Development" icon="browser" href="/guides/frontend-development">
+    Learn to build UI components
+  </Card>
+</CardGroup>

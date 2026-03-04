@@ -1,0 +1,542 @@
+---
+title: User Roles and Permissions
+description: Understanding Kolibri's user model, roles (learners, coaches, admins), collections, memberships, and permission system
+---
+
+Kolibri implements a sophisticated role-based permission system that supports multi-facility deployments, hierarchical collections, and fine-grained access control.
+
+## User Abstractions
+
+Kolibri has four main abstractions: **Users**, **Collections**, **Memberships**, and **Roles**.
+
+### Users
+
+Users represent people interacting with Kolibri:
+
+```python
+class FacilityUser(AbstractBaseUser, FacilityDataSyncableModel):
+    """
+    A user account that belongs to a particular facility.
+    FacilityUser accounts may be synced across multiple devices.
+    """
+    
+    id = UUIDField(primary_key=True)
+    username = models.CharField(max_length=125)  # Extended from 30
+    full_name = models.CharField(max_length=125, blank=True)
+    
+    # Facility association
+    facility = models.ForeignKey("Facility", on_delete=models.CASCADE)
+    
+    # Demographics (optional)
+    birth_year = models.CharField(max_length=4, blank=True, null=True)
+    gender = models.CharField(max_length=20, blank=True, null=True, choices=GENDER_CHOICES)
+    id_number = models.CharField(max_length=64, blank=True, null=True)
+    
+    # Soft deletion
+    date_deleted = DateTimeTzField(null=True, blank=True)
+```
+
+<Info>
+`FacilityUser` accounts are syncable via Morango and belong to a specific facility. They have permissions only for data associated with that facility.
+</Info>
+
+### Collections
+
+Collections form a hierarchy for organizing users:
+
+```python
+class Collection(FacilityDataSyncableModel, MPTTModel):
+    """
+    Hierarchical organization: Facility > Classroom > LearnerGroup
+    """
+    
+    id = UUIDField(primary_key=True)
+    name = models.CharField(max_length=100)
+    kind = models.CharField(max_length=20, choices=collection_kinds.choices)
+    parent = TreeForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        related_name="children",
+        on_delete=models.CASCADE,
+    )
+    dataset = models.ForeignKey("FacilityDataset", on_delete=models.CASCADE)
+```
+
+**Collection Kinds:**
+
+- **Facility**: Top-level organization (e.g., a school)
+- **Classroom**: Group of learners within a facility
+- **LearnerGroup**: Subset of learners within a classroom
+- **AdHocLearnersGroup**: Temporary grouping for specific activities
+
+```python
+# Collection hierarchy example
+facility = Collection.objects.get(kind="facility")
+classroom = Collection.objects.create(
+    name="Grade 5A",
+    kind="classroom",
+    parent=facility
+)
+learner_group = Collection.objects.create(
+    name="Advanced Math",
+    kind="learnergroup",
+    parent=classroom
+)
+```
+
+### Memberships
+
+Memberships associate users with collections:
+
+```python
+class Membership(FacilityDataSyncableModel):
+    """
+    Links a user to a collection.
+    Being a member of a collection also means being a member of all
+    parent collections in the hierarchy.
+    """
+    
+    id = UUIDField(primary_key=True)
+    user = models.ForeignKey("FacilityUser", on_delete=models.CASCADE)
+    collection = models.ForeignKey("Collection", on_delete=models.CASCADE)
+    dataset = models.ForeignKey("FacilityDataset", on_delete=models.CASCADE)
+```
+
+### Roles
+
+Roles grant users permissions for collections:
+
+```python
+class Role(FacilityDataSyncableModel):
+    """
+    Grants a user a role with respect to a collection and all
+    collections below it in the hierarchy.
+    """
+    
+    id = UUIDField(primary_key=True)
+    user = models.ForeignKey("FacilityUser", on_delete=models.CASCADE)
+    collection = models.ForeignKey("Collection", on_delete=models.CASCADE)
+    kind = models.CharField(max_length=26, choices=role_kinds.choices)
+    dataset = models.ForeignKey("FacilityDataset", on_delete=models.CASCADE)
+```
+
+**Role Kinds:**
+
+```python
+from kolibri.core.auth.constants.role_kinds import ADMIN, COACH, ASSIGNABLE_COACH
+
+# ADMIN: Full administrative access to facility
+# COACH: Can manage classes and view learner progress
+# ASSIGNABLE_COACH: Can be assigned as coach for specific classrooms
+```
+
+## User Types
+
+### Learners
+
+Regular users who access content and complete lessons:
+
+```python
+# Create a learner
+learner = FacilityUser.objects.create_user(
+    username="student1",
+    password="password",
+    facility=facility,
+    full_name="Jane Student"
+)
+
+# Add to classroom
+Membership.objects.create(
+    user=learner,
+    collection=classroom
+)
+```
+
+**Learner Permissions:**
+
+- View assigned lessons and quizzes
+- Access available content
+- Track own progress
+- Cannot view other learners' data (unless granted)
+
+### Coaches
+
+Users who manage classes and monitor learner progress:
+
+```python
+# Create a coach
+coach = FacilityUser.objects.create_user(
+    username="coach1",
+    password="password",
+    facility=facility,
+    full_name="John Coach"
+)
+
+# Grant coach role for a classroom
+Role.objects.create(
+    user=coach,
+    collection=classroom,
+    kind=role_kinds.COACH
+)
+```
+
+**Coach Permissions:**
+
+- Create and manage lessons and quizzes
+- View progress for learners in their classes
+- Manage groups within their classes
+- Access coach-only content
+- Cannot modify facility settings
+
+### Facility Admins
+
+Users with full administrative control over a facility:
+
+```python
+# Create a facility admin
+admin = FacilityUser.objects.create_user(
+    username="admin1",
+    password="password",
+    facility=facility,
+    full_name="Admin User"
+)
+
+# Grant admin role for the facility
+Role.objects.create(
+    user=admin,
+    collection=facility,
+    kind=role_kinds.ADMIN
+)
+```
+
+**Facility Admin Permissions:**
+
+- Full control over facility data
+- Manage all users, classes, and groups
+- Configure facility settings
+- View all learner progress
+- Import and manage content
+- Cannot access other facilities
+
+### Super Admin
+
+Device-level administrator (not a FacilityUser):
+
+```python
+from kolibri.core.device.models import DevicePermissions
+
+# Grant device permissions
+DevicePermissions.objects.create(
+    user=user,
+    is_superuser=True,
+    can_manage_content=True
+)
+```
+
+**Super Admin Permissions:**
+
+- Access all facilities on the device
+- Manage device settings
+- Import/export content
+- Create and delete facilities
+- Configure network settings
+
+### Anonymous Users
+
+Guest access (if enabled):
+
+```python
+from kolibri.core.auth.constants.user_kinds import ANONYMOUS
+
+# Check if guest access is allowed
+if get_device_setting("allow_guest_access"):
+    # Anonymous users can browse content
+    pass
+```
+
+**Anonymous Permissions:**
+
+- Browse available content (if enabled)
+- No progress tracking
+- Cannot access lessons or quizzes
+- Cannot view other users
+
+## Permission System
+
+### BasePermissions Class
+
+Kolibri uses a class-based permissions system:
+
+```python
+class BasePermissions(object):
+    """
+    Base class for all permission classes.
+    Defines CRUD permission checks.
+    """
+    
+    def user_can_create_object(self, user, obj):
+        """Returns True if user can create obj."""
+        raise NotImplementedError
+    
+    def user_can_read_object(self, user, obj):
+        """Returns True if user can read obj."""
+        raise NotImplementedError
+    
+    def user_can_update_object(self, user, obj):
+        """Returns True if user can update obj."""
+        raise NotImplementedError
+    
+    def user_can_delete_object(self, user, obj):
+        """Returns True if user can delete obj."""
+        raise NotImplementedError
+    
+    def readable_by_user_filter(self, user):
+        """Returns a Q object filtering objects readable by user."""
+        raise NotImplementedError
+```
+
+### RoleBasedPermissions
+
+Role-based permissions for collections:
+
+```python
+class RoleBasedPermissions(BasePermissions):
+    """
+    Permissions based on user's roles with respect to collections.
+    """
+    
+    def __init__(
+        self,
+        target_field,
+        can_be_created_by,
+        can_be_read_by,
+        can_be_updated_by,
+        can_be_deleted_by,
+        collection_field="collection",
+    ):
+        """
+        :param target_field: Field through which role target is referenced
+        :param can_be_created_by: Tuple of role kinds that can create
+        :param can_be_read_by: Tuple of role kinds that can read
+        :param can_be_updated_by: Tuple of role kinds that can update
+        :param can_be_deleted_by: Tuple of role kinds that can delete
+        """
+        pass
+```
+
+Example usage:
+
+```python
+from kolibri.core.auth.permissions.base import RoleBasedPermissions
+from kolibri.core.auth.constants import role_kinds
+
+class Lesson(models.Model):
+    collection = models.ForeignKey(Collection, on_delete=models.CASCADE)
+    
+    permissions = RoleBasedPermissions(
+        target_field="collection",
+        can_be_created_by=(role_kinds.ADMIN, role_kinds.COACH),
+        can_be_read_by=(role_kinds.ADMIN, role_kinds.COACH),
+        can_be_updated_by=(role_kinds.ADMIN, role_kinds.COACH),
+        can_be_deleted_by=(role_kinds.ADMIN, role_kinds.COACH),
+    )
+```
+
+### Combining Permissions
+
+Permissions can be combined using `|` (OR) and `&` (AND):
+
+```python
+# Allow if user is owner OR admin
+permissions = IsOwn() | IsAdminForOwnFacility()
+
+# Require both conditions
+permissions = IsSelf() & IsAdminForOwnFacility()
+```
+
+### Common Permission Classes
+
+Kolibri provides several built-in permission classes:
+
+```python
+from kolibri.core.auth.permissions.general import (
+    IsOwn,  # User owns the object
+    IsSelf,  # Object is the user themselves
+    IsAdminForOwnFacility,  # User is admin for their facility
+)
+
+from kolibri.core.auth.permissions.auth import (
+    CoachesCanManageGroupsForTheirClasses,
+    CoachesCanManageMembershipsForTheirGroups,
+    FacilityAdminCanEditForOwnFacilityDataset,
+)
+```
+
+## Checking Permissions
+
+### In Views
+
+Django REST Framework integration:
+
+```python
+from kolibri.core.auth.api import KolibriAuthPermissions
+from rest_framework import viewsets
+
+class MyViewSet(viewsets.ModelViewSet):
+    permission_classes = (KolibriAuthPermissions,)
+    
+    def get_queryset(self):
+        # Automatically filtered by user permissions
+        return MyModel.objects.all()
+```
+
+### Programmatically
+
+```python
+# Check if user can read an object
+if obj.permissions.user_can_read_object(request.user, obj):
+    # Allow access
+    pass
+
+# Get queryset filtered by read permissions
+readable_objects = MyModel.objects.filter(
+    MyModel.permissions.readable_by_user_filter(request.user)
+)
+```
+
+### Role Checks
+
+```python
+# Check if user has a role for a collection
+if user.has_role_for_collection(role_kinds.COACH, classroom):
+    # User is a coach for this classroom
+    pass
+
+# Check if user is admin for a facility
+if user.is_facility_user and user.has_role_for_collection(role_kinds.ADMIN, facility):
+    # User is a facility admin
+    pass
+```
+
+## Facility Dataset
+
+The `FacilityDataset` stores facility-level settings:
+
+```python
+class FacilityDataset(FacilityDataSyncableModel):
+    """
+    High-level metadata and settings for a facility.
+    All facility data models foreign key onto this.
+    """
+    
+    id = UUIDField(primary_key=True)
+    
+    # Sync registration
+    registered = models.BooleanField(default=False)
+    
+    # Facility configuration
+    preset = models.CharField(
+        max_length=50,
+        choices=facility_presets.choices,
+        default=facility_presets.default
+    )
+    
+    # Custom settings
+    extra_fields = JSONField(default=extra_fields_default_values)
+```
+
+**Facility Presets:**
+
+- **Formal**: School setting with strict permissions
+- **Nonformal**: Community learning with relaxed permissions
+- **Informal**: Personal learning with minimal restrictions
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Always check permissions">
+    Never assume a user has permission. Always use the permissions system to check access.
+  </Accordion>
+  
+  <Accordion title="Use role-based permissions">
+    Prefer `RoleBasedPermissions` over custom permission logic for consistency.
+  </Accordion>
+  
+  <Accordion title="Filter querysets by permissions">
+    Use `readable_by_user_filter()` to filter querysets rather than checking each object individually.
+  </Accordion>
+  
+  <Accordion title="Respect collection hierarchy">
+    Remember that roles and memberships cascade down the collection tree.
+  </Accordion>
+  
+  <Accordion title="Handle anonymous users">
+    Check if the user is authenticated before accessing `FacilityUser` properties.
+  </Accordion>
+</AccordionGroup>
+
+## Common Patterns
+
+### Creating a Classroom with Coach
+
+```python
+# Create classroom
+classroom = Collection.objects.create(
+    name="Math 101",
+    kind="classroom",
+    parent=facility,
+    dataset=facility.dataset
+)
+
+# Assign coach
+Role.objects.create(
+    user=coach_user,
+    collection=classroom,
+    kind=role_kinds.COACH,
+    dataset=facility.dataset
+)
+
+# Add learners
+for learner in learners:
+    Membership.objects.create(
+        user=learner,
+        collection=classroom,
+        dataset=facility.dataset
+    )
+```
+
+### Checking if User Can Manage Lesson
+
+```python
+from kolibri.core.auth.constants import role_kinds
+
+def user_can_manage_lesson(user, lesson):
+    """Check if user can manage a lesson."""
+    if not user.is_authenticated:
+        return False
+    
+    # Check if user is coach or admin for the lesson's collection
+    return user.has_role_for_collection(
+        role_kinds.COACH, lesson.collection
+    ) or user.has_role_for_collection(
+        role_kinds.ADMIN, lesson.collection.get_root()
+    )
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Architecture Overview" icon="building" href="/concepts/architecture">
+    Learn about Kolibri's overall architecture
+  </Card>
+  <Card title="API Permissions" icon="lock" href="/api/permissions">
+    Deep dive into permission implementation
+  </Card>
+  <Card title="Content Management" icon="database" href="/concepts/content-management">
+    Understand content access control
+  </Card>
+  <Card title="Authentication API" icon="shield" href="/api/authentication">
+    Handle authentication in the API
+  </Card>
+</CardGroup>

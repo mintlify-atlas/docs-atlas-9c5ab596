@@ -1,0 +1,627 @@
+---
+title: Internationalization (i18n)
+description: Translating Kolibri with createTranslator, ICU message syntax, and the Crowdin workflow
+---
+
+## Overview
+
+Kolibri is designed for worldwide use and has strong internationalization (i18n) support. All user-visible text must be translatable.
+
+<Warning>
+  **All user-visible text must be internationalized.** Never hard-code strings in templates or UI code.
+</Warning>
+
+## Frontend Internationalization
+
+### Using createTranslator
+
+All frontend strings use `createTranslator` from `kolibri/utils/i18n`:
+
+```javascript
+import { createTranslator } from 'kolibri/utils/i18n';
+
+const strings = createTranslator('QuizResultsStrings', {
+  pageTitle: {
+    message: 'Quiz Results',
+    context: 'Page heading for quiz results page',
+  },
+  score: {
+    message: 'You scored {score} out of {total}',
+    context: 'Shows the user\'s quiz score',
+  },
+  passed: {
+    message: 'Congratulations! You passed.',
+    context: 'Success message when user passes quiz',
+  },
+});
+
+export default {
+  name: 'QuizResults',
+  setup() {
+    // Destructure with $ suffix for use in templates
+    const { pageTitle$, score$, passed$ } = strings;
+
+    return {
+      pageTitle$,
+      score$,
+      passed$,
+    };
+  },
+};
+```
+
+In template:
+
+```vue
+<template>
+  <div>
+    <h1>{{ pageTitle$() }}</h1>
+    <p>{{ score$({ score: 8, total: 10 }) }}</p>
+    <p v-if="isPassed">{{ passed$() }}</p>
+  </div>
+</template>
+```
+
+<Note>
+  The `$` suffix convention indicates these are translation functions. Call them as functions: `pageTitle$()`
+</Note>
+
+### Message Definition Format
+
+Each message has two parts:
+
+```javascript
+{
+  messageId: {
+    message: 'The text to translate',
+    context: 'When/where this appears and how it\'s used',
+  },
+}
+```
+
+**Message ID**: camelCase identifier (e.g., `pageTitle`, `errorMessage`)
+
+**Message**: The English text that will be translated
+
+**Context**: Critical for translators to understand usage. Include:
+- Where the text appears (page heading, button label, error message)
+- How it's used
+- Any special meaning
+
+### ICU Message Syntax
+
+Kolibri uses [ICU message syntax](https://formatjs.io/docs/core-concepts/icu-syntax) for dynamic content:
+
+#### Variables
+
+```javascript
+{
+  greeting: {
+    message: 'Hello, {name}!',
+    context: 'Personalized greeting',
+  },
+  itemsSelected: {
+    message: 'You have selected {count} items',
+    context: 'Number of selected items',
+  },
+}
+
+// Usage:
+greeting$({ name: 'Alice' })  // "Hello, Alice!"
+itemsSelected$({ count: 5 })   // "You have selected 5 items"
+```
+
+#### Plurals
+
+```javascript
+{
+  questionsLabel: {
+    message: '{count, plural, one {# question} other {# questions}}',
+    context: 'Number of questions in a quiz',
+  },
+  minutesRemaining: {
+    message: '{minutes, plural, =0 {Less than a minute} one {# minute} other {# minutes}} remaining',
+    context: 'Time remaining in quiz',
+  },
+}
+
+// Usage:
+questionsLabel$({ count: 1 })  // "1 question"
+questionsLabel$({ count: 5 })  // "5 questions"
+minutesRemaining$({ minutes: 0 })  // "Less than a minute remaining"
+```
+
+Plural categories:
+- `zero`: Used in some languages for zero
+- `one`: Singular
+- `two`: Used in some languages for exactly two
+- `few`: Used in some languages for small numbers
+- `many`: Used in some languages for larger numbers
+- `other`: All other cases (required)
+- `=N`: Exact match for specific number
+
+#### Select (Conditionals)
+
+```javascript
+{
+  roleDescription: {
+    message: '{role, select, admin {Administrator} coach {Coach} learner {Learner} other {User}}',
+    context: 'User role label',
+  },
+}
+
+// Usage:
+roleDescription$({ role: 'admin' })    // "Administrator"
+roleDescription$({ role: 'learner' })  // "Learner"
+```
+
+#### Number Formatting
+
+```javascript
+{
+  progress: {
+    message: 'Progress: {percent, number, percent}',
+    context: 'Progress percentage',
+  },
+  fileSize: {
+    message: 'File size: {bytes, number} bytes',
+    context: 'File size in bytes',
+  },
+}
+
+// Usage:
+progress$({ percent: 0.75 })  // "Progress: 75%"
+fileSize$({ bytes: 1024 })     // "File size: 1,024 bytes"
+```
+
+### Common Strings Modules
+
+To avoid duplicating the same string across multiple files, use common strings modules:
+
+```javascript commonStrings.js
+import { createTranslator } from 'kolibri/utils/i18n';
+
+export default createTranslator('CommonStrings', {
+  cancel: {
+    message: 'Cancel',
+    context: 'Button to cancel an action',
+  },
+  save: {
+    message: 'Save',
+    context: 'Button to save changes',
+  },
+  delete: {
+    message: 'Delete',
+    context: 'Button to delete an item',
+  },
+});
+```
+
+Use in components:
+
+```javascript
+import commonStrings from '../commonStrings';
+
+export default {
+  setup() {
+    const { cancel$, save$ } = commonStrings;
+
+    return {
+      cancel$,
+      save$,
+    };
+  },
+};
+```
+
+<Note>
+  Only add strings to common modules if used in **three or more files** to avoid bloat.
+</Note>
+
+## Backend Internationalization
+
+Backend code uses Django's standard i18n tools:
+
+```python
+from django.utils.translation import gettext as _
+from django.utils.translation import ngettext
+from django.utils.translation import pgettext
+
+# Simple translation
+message = _('User created successfully')
+
+# Translation with context
+message = pgettext('button label', 'Save')
+
+# Plurals
+message = ngettext(
+    'One lesson',
+    '{count} lessons',
+    lesson_count
+).format(count=lesson_count)
+```
+
+For format strings:
+
+```python
+# Good - f-strings with _() around the whole string
+message = _(f'Welcome, {user.name}!')
+
+# Also good - format() with named placeholders
+message = _('Welcome, {name}!').format(name=user.name)
+```
+
+See the [Django i18n documentation](https://docs.djangoproject.com/en/stable/topics/i18n/) for complete details.
+
+## Right-to-Left (RTL) Support
+
+Kolibri fully supports right-to-left languages like Arabic, Hebrew, and Urdu.
+
+### Automatic CSS Flipping
+
+RTLCSS automatically flips directional CSS properties:
+
+```css
+/* Your CSS */
+.element {
+  padding-left: 16px;
+  margin-right: 8px;
+  text-align: left;
+}
+
+/* Auto-generated RTL CSS */
+.element {
+  padding-right: 16px;  /* Flipped */
+  margin-left: 8px;     /* Flipped */
+  text-align: right;    /* Flipped */
+}
+```
+
+<Warning>
+  **Always use `<style>` blocks for directional styles.** RTLCSS cannot flip inline styles!
+</Warning>
+
+```vue
+<!-- ❌ Wrong: Inline styles don't flip -->
+<template>
+  <div style="padding-left: 16px;">
+    Content
+  </div>
+</template>
+
+<!-- ✅ Correct: Style blocks auto-flip -->
+<template>
+  <div class="content">
+    Content
+  </div>
+</template>
+
+<style scoped>
+.content {
+  padding-left: 16px; /* Auto-flips to padding-right in RTL */
+}
+</style>
+```
+
+### Text Direction
+
+**Application text** (using `$tr` or `createTranslator`):
+- Automatically aligned based on current language direction
+- No special handling needed
+
+**User-generated text** (from database or content):
+- Must have `dir="auto"` on parent element
+- Browser detects text direction automatically
+
+```vue
+<template>
+  <!-- Application text - auto-aligned -->
+  <h1>{{ pageTitle$() }}</h1>
+
+  <!-- User content - needs dir="auto" -->
+  <div dir="auto">
+    {{ userGeneratedText }}
+  </div>
+
+  <!-- Mixed inline text -->
+  <p>
+    {{ appLabel$() }}: <span dir="auto">{{ userName }}</span>
+  </p>
+</template>
+```
+
+### RTL Behavior
+
+For direction-dependent logic, use the `isRtl` property:
+
+```javascript
+export default {
+  setup() {
+    function scrollForward() {
+      if (this.isRtl) {
+        scrollLeft();
+      } else {
+        scrollRight();
+      }
+    }
+
+    return { scrollForward };
+  },
+};
+```
+
+### Icon Flipping
+
+Use `KIcon` from the Design System - it handles RTL flipping automatically:
+
+```vue
+<template>
+  <!-- Auto-flips in RTL for directional icons -->
+  <KIcon icon="forward" />
+  <KIcon icon="back" />
+
+  <!-- Doesn't flip (not directional) -->
+  <KIcon icon="add" />
+  <KIcon icon="check" />
+</template>
+```
+
+<Note>
+  Material Design guideline: "Anything that relates to time should be depicted as moving from right to left [in RTL]." For example, forward points left in RTL.
+</Note>
+
+## Crowdin Workflow
+
+Kolibri uses [Crowdin](https://crowdin.com/project/kolibri) for translations.
+
+### For Developers
+
+#### Extracting and Uploading Strings
+
+At the beginning of string freeze (before a release):
+
+```bash
+make i18n-upload
+```
+
+This extracts all strings from the codebase and uploads them to Crowdin.
+
+#### Pre-translation
+
+After uploading, pre-translate strings using translation memory:
+
+```bash
+# Without auto-approval (recommended)
+make i18n-pretranslate
+
+# With auto-approval (use with caution)
+make i18n-pretranslate-approve-all
+```
+
+#### Downloading Translations
+
+Periodically during development, download latest translations:
+
+```bash
+# First time - download source fonts
+make i18n-download-source-fonts
+
+# Download translations (takes a long time!)
+make i18n-download
+```
+
+This:
+- Rebuilds the Crowdin project
+- Downloads all translations
+- Compiles Django messages
+- Regenerates fonts and CSS
+- Regenerates Intl JS files
+
+Commit the updated files and submit a PR to the release branch.
+
+### For Translators
+
+1. Visit [Kolibri on Crowdin](https://crowdin.com/project/kolibri)
+2. Select your language
+3. Browse files and translate strings
+4. Use the context field to understand how strings are used
+5. Translations are automatically included in the next release
+
+## Adding a New Language
+
+To add a new supported language to Kolibri:
+
+<Steps>
+  <Step title="Add to language_info.json">
+    Edit `kolibri/locale/language_info.json` and add an entry:
+
+    ```json
+    {
+      "crowdin_code": "ar",
+      "intl_code": "ar",
+      "language_name": "العربية",
+      "english_name": "Arabic",
+      "default_font": "NotoSansArabic"
+    }
+    ```
+  </Step>
+
+  <Step title="Find Language Codes">
+    - `crowdin_code`: [Crowdin language codes](https://support.crowdin.com/api/language-codes/)
+    - `intl_code`: [Intl.js language codes](https://github.com/andyearnshaw/Intl.js/tree/master/locale-data/jsonp) (lowercase)
+    - `language_name`: Native language name
+    - `english_name`: English language name
+    - `default_font`: [Noto font](https://www.google.com/get/noto/) for the language
+  </Step>
+
+  <Step title="Add to EXTRA_LANG_INFO (if needed)">
+    If Django doesn't recognize the language, add to `EXTRA_LANG_INFO` in `kolibri/deployment/default/settings/base.py`
+  </Step>
+
+  <Step title="Download Translations">
+    ```bash
+    make i18n-download
+    ```
+  </Step>
+
+  <Step title="Test the Language">
+    Start Kolibri and switch to the new language. Verify:
+    - Strings are translated
+    - Fonts render correctly (should use Noto)
+    - RTL works (if applicable)
+    - Perseus exercises work
+  </Step>
+
+  <Step title="Add to Supported Languages">
+    Once fully translated, add the Intl code to `KOLIBRI_SUPPORTED_LANGUAGES` in `kolibri/utils/i18n.py`
+  </Step>
+</Steps>
+
+<Warning>
+  Always test new languages thoroughly. Many things can go wrong with fonts, RTL, and language-specific rendering.
+</Warning>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Never hard-code user-visible text">
+    All strings must use `createTranslator` (frontend) or `gettext` (backend).
+  </Accordion>
+
+  <Accordion title="Provide context for every string">
+    Translators need context to translate accurately. Always include meaningful context.
+  </Accordion>
+
+  <Accordion title="Use descriptive message IDs">
+    IDs should describe the content: `pageTitle`, `errorMessage`, not `msg1`, `text2`.
+  </Accordion>
+
+  <Accordion title="Use ICU syntax for plurals and variables">
+    Don't construct strings with concatenation. Use ICU plural/select syntax.
+  </Accordion>
+
+  <Accordion title="Don't split sentences">
+    Keep complete sentences together. Don't split into parts for reuse.
+  </Accordion>
+
+  <Accordion title="Use common strings sparingly">
+    Only add to common modules if used in 3+ files.
+  </Accordion>
+
+  <Accordion title="Always use dir=auto for user content">
+    User-generated text needs `dir="auto"` for proper RTL/LTR display.
+  </Accordion>
+
+  <Accordion title="Use style blocks for directional styles">
+    RTLCSS can't flip inline styles. Put directional CSS in `<style>` blocks.
+  </Accordion>
+
+  <Accordion title="Test RTL thoroughly">
+    Test your UI in an RTL language (Arabic, Hebrew) to catch direction issues.
+  </Accordion>
+</AccordionGroup>
+
+## Common Patterns
+
+### Loading States
+
+```javascript
+{
+  loading: {
+    message: 'Loading...',
+    context: 'Message shown while data is loading',
+  },
+}
+```
+
+### Error Messages
+
+```javascript
+{
+  errorGeneric: {
+    message: 'An error occurred. Please try again.',
+    context: 'Generic error message',
+  },
+  errorNetwork: {
+    message: 'Network error. Check your connection and try again.',
+    context: 'Error when network request fails',
+  },
+}
+```
+
+### Confirmation Messages
+
+```javascript
+{
+  deleteConfirm: {
+    message: 'Are you sure you want to delete {itemName}? This cannot be undone.',
+    context: 'Confirmation before deleting an item',
+  },
+}
+```
+
+### Date/Time Formatting
+
+Use Intl APIs for dates and times - they handle localization automatically:
+
+```javascript
+const formatter = new Intl.DateTimeFormat(window.navigator.language, {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
+
+const formattedDate = formatter.format(new Date());
+// English: "March 4, 2026"
+// Spanish: "4 de marzo de 2026"
+// Arabic: "٤ مارس ٢٠٢٦"
+```
+
+## Testing Translations
+
+Test your UI with different languages:
+
+```bash
+# Set language via environment
+export KOLIBRI_LANGUAGE=ar  # Arabic
+export KOLIBRI_LANGUAGE=es  # Spanish
+kolibri start
+```
+
+Or change language in Kolibri's UI: Device > Settings > Language
+
+### Testing RTL
+
+Test with RTL languages:
+- Arabic (ar)
+- Hebrew (he) 
+- Urdu (ur)
+
+<Warning>
+  RTL support is broken when running the development server with hot reload (`pnpm run devserver-hot`). Use regular devserver for RTL testing.
+</Warning>
+
+## Resources
+
+- [ICU Message Syntax](https://formatjs.io/docs/core-concepts/icu-syntax)
+- [Crowdin ICU Documentation](https://support.crowdin.com/icu-message-syntax/)
+- [Material Design Bidirectionality](https://material.io/design/usability/bidirectionality.html)
+- [Unicode Bidirectional Algorithm](https://www.w3.org/International/articles/inline-bidi-markup/uba-basics)
+- [Django i18n Documentation](https://docs.djangoproject.com/en/stable/topics/i18n/)
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Frontend Development" icon="code" href="/guides/frontend-development">
+    Learn how to use createTranslator in Vue components
+  </Card>
+  <Card title="Backend Development" icon="server" href="/guides/backend-development">
+    Use Django's gettext for backend strings
+  </Card>
+  <Card title="Testing" icon="flask" href="/guides/testing">
+    Test your internationalized code
+  </Card>
+  <Card title="Design System" icon="palette" href="https://design-system.learningequality.org/">
+    KIcon handles RTL flipping automatically
+  </Card>
+</CardGroup>

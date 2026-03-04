@@ -1,0 +1,385 @@
+---
+title: "Facilities & Collections"
+description: "API endpoints for managing facilities, classrooms, and learner groups"
+---
+
+## Facilities
+
+### List Facilities
+
+Retrieve all facilities the current user has access to.
+
+```bash GET /api/auth/facility
+curl http://localhost:8080/api/auth/facility
+```
+
+#### Response Fields
+
+<ResponseField name="id" type="string">
+  Facility unique identifier
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Facility name
+</ResponseField>
+
+<ResponseField name="num_users" type="integer">
+  Total number of users in the facility
+</ResponseField>
+
+<ResponseField name="num_classrooms" type="integer">
+  Total number of classrooms in the facility
+</ResponseField>
+
+<ResponseField name="dataset" type="object">
+  Dataset configuration object
+</ResponseField>
+
+<ResponseField name="last_successful_sync" type="string">
+  ISO 8601 timestamp of last successful sync
+</ResponseField>
+
+<ResponseField name="last_failed_sync" type="string">
+  ISO 8601 timestamp of last failed sync
+</ResponseField>
+
+### Get Facility
+
+Retrieve details of a specific facility.
+
+```bash GET /api/auth/facility/:id
+curl http://localhost:8080/api/auth/facility/facility-uuid-here
+```
+
+### Create Facility
+
+Create a new facility (superuser only).
+
+```bash POST /api/auth/facility/create_facility
+curl -X POST http://localhost:8080/api/auth/facility/create_facility \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "New School"
+  }'
+```
+
+## Facility Dataset Settings
+
+### Get Facility Dataset
+
+Retrieve the dataset settings for a facility.
+
+```bash GET /api/auth/facilitydataset
+curl "http://localhost:8080/api/auth/facilitydataset?facility_id=facility-uuid"
+```
+
+#### Query Parameters
+
+<ParamField query="facility_id" type="string">
+  Facility UUID to get settings for
+</ParamField>
+
+#### Response Fields
+
+<ResponseField name="id" type="string">
+  Dataset unique identifier
+</ResponseField>
+
+<ResponseField name="learner_can_edit_username" type="boolean">
+  Whether learners can edit their own username
+</ResponseField>
+
+<ResponseField name="learner_can_edit_name" type="boolean">
+  Whether learners can edit their full name
+</ResponseField>
+
+<ResponseField name="learner_can_edit_password" type="boolean">
+  Whether learners can change their password
+</ResponseField>
+
+<ResponseField name="learner_can_sign_up" type="boolean">
+  Whether learners can self-register
+</ResponseField>
+
+<ResponseField name="learner_can_delete_account" type="boolean">
+  Whether learners can delete their own account
+</ResponseField>
+
+<ResponseField name="learner_can_login_with_no_password" type="boolean">
+  Whether password-less login is enabled
+</ResponseField>
+
+<ResponseField name="show_download_button_in_learn" type="boolean">
+  Whether to show download button in Learn
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Facility description
+</ResponseField>
+
+<ResponseField name="location" type="string">
+  Facility location
+</ResponseField>
+
+<ResponseField name="registered" type="boolean">
+  Whether facility is registered with Kolibri Data Portal
+</ResponseField>
+
+<ResponseField name="preset" type="string">
+  Preset type: `formal`, `nonformal`, `informal`
+</ResponseField>
+
+### Update Facility Dataset
+
+Update facility dataset settings.
+
+```bash PATCH /api/auth/facilitydataset/:id
+curl -X PATCH http://localhost:8080/api/auth/facilitydataset/dataset-uuid \
+  -H "Content-Type: application/json" \
+  -d '{
+    "learner_can_sign_up": true
+  }'
+```
+
+### Reset Facility Settings
+
+Reset facility settings to defaults.
+
+```bash POST /api/auth/facilitydataset/:id/resetsettings
+curl -X POST http://localhost:8080/api/auth/facilitydataset/dataset-uuid/resetsettings
+```
+
+## Classrooms
+
+### List Classrooms
+
+Retrieve all classrooms in a facility.
+
+```bash GET /api/auth/classroom
+curl "http://localhost:8080/api/auth/classroom?parent=facility-uuid"
+```
+
+#### Query Parameters
+
+<ParamField query="parent" type="string">
+  Filter by parent facility UUID
+</ParamField>
+
+<ParamField query="role" type="string">
+  Filter by user role (e.g., "coach")
+</ParamField>
+
+#### Response Fields
+
+<ResponseField name="id" type="string">
+  Classroom unique identifier
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Classroom name
+</ResponseField>
+
+<ResponseField name="parent" type="string">
+  UUID of parent facility
+</ResponseField>
+
+<ResponseField name="learner_count" type="integer">
+  Number of learners in the classroom
+</ResponseField>
+
+<ResponseField name="coaches" type="array">
+  Array of coach user objects assigned to this classroom
+</ResponseField>
+
+### Get Classroom
+
+Retrieve details of a specific classroom.
+
+```bash GET /api/auth/classroom/:id
+curl http://localhost:8080/api/auth/classroom/classroom-uuid-here
+```
+
+### Create Classroom
+
+Create a new classroom.
+
+```bash POST /api/auth/classroom
+curl -X POST http://localhost:8080/api/auth/classroom \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Grade 5A",
+    "parent": "facility-uuid-here"
+  }'
+```
+
+#### Request Parameters
+
+<ParamField body="name" type="string" required>
+  Classroom name
+</ParamField>
+
+<ParamField body="parent" type="string" required>
+  UUID of the parent facility
+</ParamField>
+
+### Update Classroom
+
+Update an existing classroom.
+
+```bash PATCH /api/auth/classroom/:id
+curl -X PATCH http://localhost:8080/api/auth/classroom/classroom-uuid \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Updated Classroom Name"
+  }'
+```
+
+### Delete Classroom
+
+Delete a classroom.
+
+```bash DELETE /api/auth/classroom/:id
+curl -X DELETE http://localhost:8080/api/auth/classroom/classroom-uuid-here
+```
+
+## Learner Groups
+
+### List Learner Groups
+
+Retrieve all learner groups in a classroom.
+
+```bash GET /api/auth/learnergroup
+curl "http://localhost:8080/api/auth/learnergroup?parent=classroom-uuid"
+```
+
+#### Query Parameters
+
+<ParamField query="parent" type="string">
+  Filter by parent classroom UUID
+</ParamField>
+
+#### Response Fields
+
+<ResponseField name="id" type="string">
+  Learner group unique identifier
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Group name
+</ResponseField>
+
+<ResponseField name="parent" type="string">
+  UUID of parent classroom
+</ResponseField>
+
+<ResponseField name="user_ids" type="array">
+  Array of learner UUIDs in this group
+</ResponseField>
+
+### Get Learner Group
+
+Retrieve details of a specific learner group.
+
+```bash GET /api/auth/learnergroup/:id
+curl http://localhost:8080/api/auth/learnergroup/group-uuid-here
+```
+
+### Create Learner Group
+
+Create a new learner group within a classroom.
+
+```bash POST /api/auth/learnergroup
+curl -X POST http://localhost:8080/api/auth/learnergroup \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Advanced Learners",
+    "parent": "classroom-uuid-here"
+  }'
+```
+
+#### Request Parameters
+
+<ParamField body="name" type="string" required>
+  Group name
+</ParamField>
+
+<ParamField body="parent" type="string" required>
+  UUID of the parent classroom
+</ParamField>
+
+### Update Learner Group
+
+Update an existing learner group.
+
+```bash PATCH /api/auth/learnergroup/:id
+curl -X PATCH http://localhost:8080/api/auth/learnergroup/group-uuid \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Updated Group Name"
+  }'
+```
+
+### Delete Learner Group
+
+Delete a learner group.
+
+```bash DELETE /api/auth/learnergroup/:id
+curl -X DELETE http://localhost:8080/api/auth/learnergroup/group-uuid-here
+```
+
+## Memberships
+
+Memberships connect users to collections (classrooms and groups).
+
+### Create Membership
+
+Add a user to a classroom or group.
+
+```bash POST /api/auth/membership
+curl -X POST http://localhost:8080/api/auth/membership \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user": "user-uuid",
+    "collection": "classroom-uuid"
+  }'
+```
+
+### Delete Membership
+
+Remove a user from a classroom or group.
+
+```bash DELETE /api/auth/membership/:id
+curl -X DELETE http://localhost:8080/api/auth/membership/membership-uuid
+```
+
+## Roles
+
+Roles assign permissions to users within collections.
+
+### Create Role
+
+Assign a role to a user.
+
+```bash POST /api/auth/role
+curl -X POST http://localhost:8080/api/auth/role \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user": "user-uuid",
+    "collection": "classroom-uuid",
+    "kind": "coach"
+  }'
+```
+
+#### Role Kinds
+
+- `admin` - Facility administrator
+- `coach` - Classroom coach
+- `assignable_coach` - Can be assigned as coach
+
+### Delete Role
+
+Remove a role from a user.
+
+```bash DELETE /api/auth/role/:id
+curl -X DELETE http://localhost:8080/api/auth/role/role-uuid
+```

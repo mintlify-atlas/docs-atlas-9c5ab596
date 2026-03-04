@@ -1,0 +1,262 @@
+---
+title: Architecture Overview
+description: Understanding Kolibri's Django/Vue.js stack, project structure, and technology choices
+---
+
+Kolibri is a web application built primarily using Python on the server-side and JavaScript on the client-side. This architecture enables Kolibri to run on a wide range of devices, from low-resource environments to high-performance servers.
+
+## Technology Stack
+
+### Server-Side (Backend)
+
+The server is built on **Django** (Python 3.6+) and contains only pure-Python dependencies at runtime. It supports both SQLite and PostgreSQL databases.
+
+**Key Responsibilities:**
+
+- Database interface (SQLite or PostgreSQL)
+- Authentication and permission middleware
+- API routing and handling via Django REST Framework
+- Top-level URL routing between application sections
+- Serving HTML wrappers with bootstrapped data
+- Serving static assets (fonts, images)
+
+**Core Technologies:**
+
+```python
+from django.db import models
+from rest_framework import viewsets
+from kolibri.core.api import ValuesViewset
+
+class MyViewSet(ValuesViewset):
+    """Example API endpoint using ValuesViewset"""
+    values = ("id", "title", "description")
+```
+
+<Info>
+Kolibri uses `ValuesViewset` or `ReadOnlyValuesViewset` from `kolibri.core.api` for new API endpoints, not Django REST Framework's `ModelViewSet` or `ViewSet`.
+</Info>
+
+### Client-Side (Frontend)
+
+The frontend user interface is built with **Vue.js** (v2.7 with Composition API) and uses ES6 syntax transpiled by Bublé.
+
+**Key Responsibilities:**
+
+- Compositing and rendering the UI
+- Managing client-side state using composables (Vuex is deprecated)
+- Interacting with the server through the API
+
+**Core Technologies:**
+
+```vue
+<template>
+  <div :style="{ color: $themeTokens.text }">
+    <KButton @click="handleAction">{{ title$ }}</KButton>
+  </div>
+</template>
+
+<script>
+import { ref } from 'vue';
+import { createTranslator } from 'kolibri/composables';
+
+const strings = createTranslator('MyComponent', {
+  title: { message: 'Click me', context: 'Button label' },
+});
+
+export default {
+  name: 'MyComponent',
+  setup() {
+    const { title$ } = strings;
+    const count = ref(0);
+    
+    const handleAction = () => {
+      count.value++;
+    };
+    
+    return {
+      title$,
+      count,
+      handleAction,
+    };
+  },
+};
+</script>
+```
+
+<Warning>
+New components must use the Composition API with `setup()`. Do not use the Options API (`data()`, `computed:`, `methods:`).
+</Warning>
+
+## Project Structure
+
+Kolibri's codebase is organized into a clear hierarchy:
+
+```
+kolibri/
+├── kolibri/core/          # Core modules (always available)
+│   ├── auth/              # Authentication and permissions
+│   ├── content/           # Content channel and metadata management
+│   ├── device/            # Device-level settings
+│   ├── logger/            # Event logging and analytics
+│   ├── tasks/             # Background task queue
+│   └── ...
+├── kolibri/plugins/       # Feature plugins (can be enabled/disabled)
+│   ├── learn/             # Learner interface
+│   ├── coach/             # Coach tools
+│   ├── facility/          # Facility management
+│   └── ...
+├── packages/              # JavaScript packages
+│   ├── kolibri/           # Core frontend package
+│   ├── kolibri-common/    # Shared utilities
+│   └── kolibri-tools/     # Build tools
+├── docs/                  # Developer documentation
+└── test/                  # Test utilities and fixtures
+```
+
+### Core vs. Plugins
+
+**Core modules** (`kolibri/core/*`) provide essential, always-available functionality:
+
+- Fundamental to Kolibri's operation
+- Shared infrastructure used across multiple plugins
+- Cannot be disabled without breaking Kolibri
+- Examples: `auth`, `content`, `logger`, `tasks`
+
+**Plugins** (`kolibri/plugins/*`) provide specific features:
+
+- Can be enabled/disabled by administrators
+- Self-contained features with minimal dependencies
+- Provide user interfaces or workflows
+- Examples: `learn`, `coach`, `facility`
+
+<Tip>
+When adding new features, ask: "Should administrators be able to disable this?" If yes, it's a plugin. If it's required for Kolibri to operate, it's core.
+</Tip>
+
+## Build Infrastructure
+
+Kolibri uses a combination of Node.js and Python scripts to transform source code for browser execution.
+
+### Frontend Build Process
+
+**Webpack** handles the transformation:
+
+- ES6 → ES5 transpilation
+- Vue.js component files (\*.vue) → JS and CSS
+- SCSS → CSS with auto-prefixing
+- Bundling multiple JS dependencies
+- Minification and compression
+- Source map generation
+- Plugin resource bundling and async loading
+
+### Distribution Formats
+
+The **Makefile** contains top-level commands for building:
+
+- **Wheel files** (`.whl`): `make dist`
+- **PEX files** (`.pex`): `make pex`
+
+Platform-specific distributions (Windows, Debian, Android) are built from wheel files and maintained in separate repositories.
+
+## Automated Testing
+
+Kolibri uses multiple mechanisms to ensure code quality:
+
+### Python Testing
+
+```bash
+pytest kolibri/core/auth/test/
+pytest kolibri/core/auth/test/ -k test_login
+```
+
+- **pytest**: Test runner for all Python tests
+- **APITestCase**: Django REST Framework API tests
+- **TestCase**: Django model and integration tests
+
+### Frontend Testing
+
+```bash
+pnpm run test-jest -- path/to/file.spec.js
+pnpm run test-jest -- --testPathPattern learn
+```
+
+- **Jest**: Test runner (not Vitest)
+- **Vue Testing Library**: Component testing
+- `describe`, `it`, `expect` are Jest globals (no import needed)
+
+```javascript
+import { render, screen } from '@testing-library/vue';
+
+describe('MyComponent', () => {
+  it('renders correctly', () => {
+    render(MyComponent, { props: { title: 'Hello' } });
+    expect(screen.getByText('Hello')).toBeTruthy();
+  });
+});
+```
+
+### Code Quality Tools
+
+- **pre-commit**: Runs locally on `git commit` to enforce conventions
+- **EditorConfig**: Helps developers set editor preferences
+- **tox**: Runs tests across multiple Python/Node environments
+- **ESLint**: ES6 JavaScript linting
+- **Stylelint**: SCSS linting
+- **HTMLHint**: HTML and Vue.js component linting
+- **Sentry**: Automated error reporting (off by default)
+
+## Development Workflow
+
+Start the development servers:
+
+```bash
+# Terminal 1: Django backend
+pnpm run python-devserver  # Runs on port 8000
+
+# Terminal 2: Webpack watcher
+pnpm run watch
+```
+
+<Info>
+Pre-commit hooks are required. If a commit fails, pre-commit auto-fixes files. You must `git add` the fixed files and re-commit.
+</Info>
+
+## Database Support
+
+Kolibri supports two database backends:
+
+- **SQLite**: Default, lightweight, single-file database
+- **PostgreSQL**: For larger deployments requiring concurrent access
+
+### Custom Fields
+
+```python
+from kolibri.core.fields import DateTimeTzField, JSONField
+from morango.models import UUIDField
+
+class MyModel(models.Model):
+    id = UUIDField(primary_key=True)  # For syncable models
+    created_at = DateTimeTzField(auto_now_add=True)  # Not Django's DateTimeField
+    metadata = JSONField(default={})
+```
+
+<Warning>
+Use `DateTimeTzField` from `kolibri.core.fields` for timestamps, not Django's `DateTimeField`. Use `UUIDField` from `morango.models` for syncable models.
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Plugin System" icon="plug" href="/concepts/plugins">
+    Learn how plugins extend Kolibri functionality
+  </Card>
+  <Card title="Content Management" icon="database" href="/concepts/content-management">
+    Understand how content channels work
+  </Card>
+  <Card title="User Roles" icon="users" href="/concepts/user-roles">
+    Explore Kolibri's permission system
+  </Card>
+  <Card title="Backend Development" icon="code" href="/guides/backend-development">
+    Learn backend API best practices
+  </Card>
+</CardGroup>

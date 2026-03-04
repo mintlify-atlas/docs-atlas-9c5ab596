@@ -1,0 +1,653 @@
+---
+title: Facility Management
+description: User management, roles, permissions, and facility configuration settings
+---
+
+The Facility Management plugin provides administrators with comprehensive tools to manage users, configure facility settings, and control access to Kolibri features. It serves as the central hub for organizational administration and user lifecycle management.
+
+## Overview
+
+Facility management encompasses all administrative tasks related to user accounts, organizational structure, and facility-wide settings. The plugin is designed for facility administrators who oversee Kolibri deployments in schools, learning centers, or community organizations.
+
+**Key Capabilities:**
+- Create and manage user accounts
+- Assign and manage user roles and permissions
+- Organize learners into classes
+- Configure facility-wide settings
+- Import users from CSV files
+- Sync facility data across devices
+- Export usage data and reports
+
+<Info>
+Facility management features are available to users with the Admin role. Some features require Super Admin permissions for multi-facility deployments.
+</Info>
+
+## User Management
+
+User management is the core function of the Facility plugin, providing tools to create, edit, and organize user accounts.
+
+### Creating Users
+
+<Steps>
+  <Step title="Access User Creation">
+    Navigate to Facility > Users and click "New User" to open the creation form.
+  </Step>
+  
+  <Step title="Enter User Details">
+    Provide required information:
+    - **Full name**: User's complete name (required)
+    - **Username**: Unique login identifier (required)
+    - **Password**: Secure password (required, unless password-less login is enabled)
+    - **User type**: Learner, Coach, or Admin
+    - **Identifier**: Optional ID number or student ID
+    - **Birth year**: Optional demographic information
+    - **Gender**: Optional demographic information
+  </Step>
+  
+  <Step title="Assign to Classes">
+    For learners:
+    - Select one or more classes for enrollment
+    - Create new class if needed
+    - Skip for users who aren't learners
+  </Step>
+  
+  <Step title="Set Permissions">
+    Configure user role:
+    - **Learner**: Access to Learn plugin only
+    - **Coach**: Access to Coach plugin for assigned classes
+    - **Admin**: Full facility administration access
+  </Step>
+  
+  <Step title="Save and Create">
+    Review details and save the new user account.
+  </Step>
+</Steps>
+
+### User Roles and Permissions
+
+Kolibri has a hierarchical permission system:
+
+<Tabs>
+  <Tab title="Learner">
+    **Permissions:**
+    - Access Learn plugin
+    - View assigned lessons and quizzes
+    - Browse available content (if allowed)
+    - Track own progress
+    - Download content (if enabled)
+    
+    **Restrictions:**
+    - Cannot view other learners' data
+    - Cannot access admin features
+    - Cannot create or assign content
+  </Tab>
+  
+  <Tab title="Coach">
+    **Permissions:**
+    - All Learner permissions
+    - Access Coach plugin
+    - Create lessons and quizzes
+    - Assign activities to classes/groups
+    - View learner progress reports
+    - Manage class groups
+    
+    **Scope:**
+    - Can only manage assigned classes
+    - Cannot access facility settings
+    - Cannot create or delete users
+  </Tab>
+  
+  <Tab title="Admin">
+    **Permissions:**
+    - All Coach permissions
+    - Access Facility plugin
+    - Create, edit, and delete users
+    - Manage all classes
+    - Configure facility settings
+    - Import/export data
+    - Assign coaches to classes
+    
+    **Scope:**
+    - Full control within the facility
+    - Cannot access device management (requires Super Admin)
+  </Tab>
+  
+  <Tab title="Super Admin">
+    **Permissions:**
+    - All Admin permissions
+    - Access Device Management plugin
+    - Import and manage content
+    - Configure device settings
+    - Manage multiple facilities
+    - Set up device infrastructure
+    
+    **Scope:**
+    - Highest level of access
+    - Can manage entire Kolibri installation
+  </Tab>
+</Tabs>
+
+### Editing Users
+
+Administrators can modify user accounts:
+
+**Editable User Information**
+- Full name
+- Username (with caution - affects login)
+- Password reset
+- User type/role
+- Demographic information
+- Identifier
+
+**Managing User Status**
+- Move users to trash (soft delete)
+- Restore users from trash
+- Permanently delete users
+
+**Bulk Operations**
+- Select multiple users
+- Bulk role assignment
+- Bulk class enrollment
+- Bulk deletion/archival
+
+<Warning>
+Changing a username affects the user's ability to log in. Ensure users are notified of username changes.
+</Warning>
+
+### Password Management
+
+**Administrator Password Reset**
+
+Admins can reset any user's password:
+1. Select user from user list
+2. Click "Reset Password"
+3. Enter new password
+4. Confirm and save
+5. Provide new password to user securely
+
+**Password Policies**
+
+Configurable through facility settings:
+- Require passwords for learners
+- Allow learners to change own passwords
+- Password complexity requirements
+- Password-less login (for learners)
+
+### User Search and Filtering
+
+The user management interface includes powerful search and filtering:
+
+**Search Capabilities**
+- Search by name
+- Search by username
+- Search by identifier
+- Real-time search results
+
+**Filter Options**
+<AccordionGroup>
+  <Accordion title="By Role">
+    Filter to show only:
+    - Learners
+    - Coaches
+    - Admins
+  </Accordion>
+  
+  <Accordion title="By Class">
+    - All classes
+    - Specific class
+    - Users not in any class
+  </Accordion>
+  
+  <Accordion title="By Demographics">
+    - Birth year range
+    - Gender
+    - Combination of demographic filters
+  </Accordion>
+  
+  <Accordion title="By Status">
+    - Active users
+    - Users in trash
+    - Recently created users
+  </Accordion>
+</AccordionGroup>
+
+## Class Management
+
+Classes are organizational units that group learners together for instruction.
+
+### Creating and Managing Classes
+
+<Steps>
+  <Step title="Create Class">
+    From the Classes section:
+    - Click "New Class"
+    - Enter class name (e.g., "Grade 5A", "Mathematics 101")
+    - Optionally add description
+    - Save the class
+  </Step>
+  
+  <Step title="Enroll Learners">
+    Add learners to the class:
+    - Navigate to class details
+    - Click "Enroll Learners"
+    - Select learners from facility roster
+    - Add selected learners to class
+    - Or enroll during user creation
+  </Step>
+  
+  <Step title="Assign Coaches">
+    Grant coaching access:
+    - From class view, select "Assign Coaches"
+    - Choose users with Coach or Admin role
+    - Assigned coaches can manage class activities
+  </Step>
+  
+  <Step title="Manage Class">
+    Ongoing class management:
+    - Add or remove learners
+    - Reassign coaches
+    - Edit class name and description
+    - View class roster and activity
+  </Step>
+</Steps>
+
+### Class Operations
+
+**Rename Class**
+- Update class name to reflect semester or subject changes
+- Maintain continuity of class data
+
+**Copy Class**
+- Duplicate class structure for new term
+- Copy learners to new class
+- Useful for semester transitions
+
+**Delete Class**
+- Remove unused classes
+- Confirmation required
+- Consider impact on learner enrollments and assignments
+
+<Info>
+Classes provide the organizational structure for the Coach plugin. Lessons and quizzes are assigned at the class level.
+</Info>
+
+### Multi-Class Management
+
+**Learners in Multiple Classes**
+- Learners can be enrolled in any number of classes
+- See all classes on Learn home page
+- Receive assignments from all classes
+- Progress tracked separately per class
+
+**Coaches for Multiple Classes**
+- Coaches can be assigned to multiple classes
+- Switch between classes in Coach interface
+- View aggregated data across all coached classes
+
+## Facility Configuration
+
+Facility settings control system-wide behavior and access policies.
+
+### Facility Settings
+
+<Tabs>
+  <Tab title="General Settings">
+    **Facility Name and ID**
+    - Facility display name
+    - Unique facility identifier
+    - Edit facility name
+    
+    **Sign-In Requirements**
+    - Allow guest access (no account needed)
+    - Require passwords for learners
+    - Allow learners to create own accounts
+    - Allow learners to edit own passwords
+  </Tab>
+  
+  <Tab title="Content Access">
+    **Learner Permissions**
+    - Allow learners to access unassigned content
+    - Restrict to assigned lessons and quizzes only
+    - Allow content downloads
+    - Download on metered connections
+    
+    **Coach Permissions**
+    - Can edit own lessons and quizzes
+    - Can edit assignments created by other coaches
+  </Tab>
+  
+  <Tab title="Privacy and Data">
+    **Data Collection**
+    - Enable usage data collection
+    - Anonymous usage statistics
+    - Privacy policy compliance
+    
+    **Data Retention**
+    - Log retention periods
+    - Data export capabilities
+    - Sync settings for multi-device deployments
+  </Tab>
+</Tabs>
+
+### Facility Settings Workflow
+
+<Steps>
+  <Step title="Access Settings">
+    Navigate to Facility > Settings
+  </Step>
+  
+  <Step title="Review Options">
+    Each setting includes:
+    - Clear description of behavior
+    - Impact on learner and coach experience
+    - Recommended defaults
+  </Step>
+  
+  <Step title="Toggle Settings">
+    Enable or disable settings using checkboxes:
+    - Changes save automatically
+    - Immediate effect on user experience
+  </Step>
+  
+  <Step title="Verify Changes">
+    Confirm settings have desired effect:
+    - Test with non-admin account
+    - Verify learner and coach access
+    - Adjust if needed
+  </Step>
+</Steps>
+
+<Warning>
+Facility settings affect all users. Test changes carefully and communicate updates to coaches and learners.
+</Warning>
+
+## CSV User Import
+
+Bulk user creation via CSV file import streamlines user management for large deployments.
+
+### CSV Import Process
+
+<Steps>
+  <Step title="Download Template">
+    From Users page:
+    - Click "Options" > "Import from CSV"
+    - Download CSV template
+    - Review required and optional columns
+  </Step>
+  
+  <Step title="Prepare CSV File">
+    Create or edit CSV with user data:
+    
+    **Required Columns:**
+    - `username`: Unique login name
+    - `full_name`: User's complete name
+    - `user_type`: LEARNER, COACH, or ADMIN
+    
+    **Optional Columns:**
+    - `password`: User password (or leave blank for random)
+    - `identifier`: Student ID or employee number
+    - `birth_year`: Birth year (YYYY format)
+    - `gender`: MALE, FEMALE, or NOT_SPECIFIED
+    - `class_names`: Comma-separated class names for enrollment
+  </Step>
+  
+  <Step title="Upload CSV">
+    Import the file:
+    - Click "Choose File" and select CSV
+    - System validates file format
+    - Review any errors or warnings
+  </Step>
+  
+  <Step title="Preview Import">
+    Review before committing:
+    - See list of users to be created
+    - Verify class assignments
+    - Check for duplicate usernames
+    - Correct errors if needed
+  </Step>
+  
+  <Step title="Complete Import">
+    Finalize user creation:
+    - Confirm import
+    - System creates all users
+    - New classes created automatically if specified
+    - Review import summary
+  </Step>
+</Steps>
+
+### CSV Import Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Validate Data" icon="check-circle">
+    - Ensure unique usernames
+    - Verify user types are correct
+    - Check class name spelling
+    - Remove empty rows
+  </Card>
+  
+  <Card title="Handle Passwords" icon="key">
+    - Use secure password generation
+    - Document passwords for distribution
+    - Consider password-less option for learners
+    - Plan password distribution method
+  </Card>
+  
+  <Card title="Test First" icon="vial">
+    - Import small batch first
+    - Verify results
+    - Test user logins
+    - Refine process before full import
+  </Card>
+  
+  <Card title="Keep Records" icon="file-alt">
+    - Save original CSV file
+    - Document import dates
+    - Track password distribution
+    - Maintain audit trail
+  </Card>
+</CardGroup>
+
+<Tip>
+For initial facility setup with many users, CSV import is much faster than individual user creation.
+</Tip>
+
+## Data Management
+
+The Facility plugin includes tools for data import, export, and synchronization.
+
+### Data Export
+
+**Export Facility Data**
+
+Administrators can export:
+- User accounts and enrollment
+- Class rosters
+- Usage logs and activity data
+- Progress and performance data
+
+**Export Formats**
+- CSV files for spreadsheet analysis
+- JSON for system integration
+- Database exports for backup
+
+### Data Synchronization
+
+For multi-device deployments, sync facility data across Kolibri instances:
+
+<Steps>
+  <Step title="Configure Sync">
+    From Data page:
+    - Select sync destination device
+    - Choose data to sync
+    - Configure sync schedule
+  </Step>
+  
+  <Step title="Initiate Sync">
+    Start synchronization:
+    - One-time sync
+    - Scheduled automatic sync
+    - Bi-directional or one-way sync
+  </Step>
+  
+  <Step title="Monitor Progress">
+    Track sync status:
+    - Progress indicators
+    - Error notifications
+    - Completion confirmation
+  </Step>
+  
+  <Step title="Verify Sync">
+    Confirm data transfer:
+    - Check synced users on destination
+    - Verify data completeness
+    - Resolve conflicts if any
+  </Step>
+</Steps>
+
+### Data Privacy and Compliance
+
+**Privacy Controls**
+- Configure data collection settings
+- Manage learner data visibility
+- Control data export permissions
+- Implement data retention policies
+
+**Compliance Features**
+- GDPR-compatible data management
+- Data anonymization options
+- Right to deletion support
+- Audit logging
+
+## Device Management PIN
+
+The facility admin can set a Device Management PIN to protect device-level settings.
+
+### PIN Management Workflow
+
+<Steps>
+  <Step title="Create PIN">
+    From Facility Settings:
+    - Navigate to "Device Management PIN" section
+    - Click "Create PIN"
+    - Enter numeric PIN
+    - Confirm PIN
+  </Step>
+  
+  <Step title="Secure PIN">
+    Protect the PIN:
+    - Store securely
+    - Share only with authorized admins
+    - Don't write on device
+  </Step>
+  
+  <Step title="Use PIN">
+    When required:
+    - Enter PIN to access Device Management
+    - PIN required for content import
+    - PIN required for device settings changes
+  </Step>
+  
+  <Step title="Manage PIN">
+    Ongoing management:
+    - Change PIN periodically
+    - Remove PIN if not needed
+    - Reset if forgotten (requires facility admin)
+  </Step>
+</Steps>
+
+<Info>
+The Device Management PIN adds an extra layer of security, preventing unauthorized changes to device configuration and content.
+</Info>
+
+## Multi-Facility Administration
+
+Super admins can manage multiple facilities on a single Kolibri device.
+
+### Multi-Facility Features
+
+**Facility Switching**
+- View all facilities on device
+- Switch between facilities for administration
+- Maintain separate user bases per facility
+
+**Facility Creation**
+- Create new facilities
+- Configure facility settings independently
+- Import facility data from other devices
+
+**Cross-Facility Management**
+- Super admin access to all facilities
+- Facility-specific admins for delegation
+- Isolated data per facility
+
+### Use Cases for Multiple Facilities
+
+<CardGroup cols={2}>
+  <Card title="Multi-School Deployment" icon="school">
+    Manage multiple schools from central device, each with separate administration.
+  </Card>
+  
+  <Card title="Community Learning Center" icon="home">
+    Different programs or organizations sharing infrastructure with isolated user bases.
+  </Card>
+  
+  <Card title="Training Provider" icon="certificate">
+    Separate facilities for different training programs or client organizations.
+  </Card>
+  
+  <Card title="Pilot Programs" icon="flask">
+    Test facility for experimentation separate from production facility.
+  </Card>
+</CardGroup>
+
+## User Interface Features
+
+The Facility Management interface is designed for administrative efficiency:
+
+**User Table**
+- Sortable columns (name, username, role)
+- Pagination for large user lists
+- Bulk selection checkboxes
+- Quick actions menu per user
+
+**Toolbar Actions**
+- Search box with live filtering
+- Filter button for advanced filtering
+- New user creation
+- Bulk operation buttons
+
+**Selection Bottom Bar**
+
+When users are selected:
+- Number of selected users
+- Available bulk actions
+- Clear selection option
+- Contextual action buttons
+
+## Accessibility Features
+
+- Keyboard navigation for all functions
+- Screen reader compatible
+- Clear visual hierarchy
+- Confirmation dialogs for destructive actions
+- Helpful error messages and validation
+
+## Related Documentation
+
+<CardGroup cols={2}>
+  <Card title="Device Management" icon="server" href="/features/device-management">
+    Configure device settings and import content
+  </Card>
+  
+  <Card title="Coach Plugin" icon="chalkboard-teacher" href="/features/coach">
+    Create lessons and track learner progress
+  </Card>
+  
+  <Card title="Learn Plugin" icon="book-reader" href="/features/learn">
+    Understand the learner experience
+  </Card>
+  
+  <Card title="Device Management" icon="hard-drive" href="/features/device-management">
+    Synchronize facility data across devices
+  </Card>
+</CardGroup>

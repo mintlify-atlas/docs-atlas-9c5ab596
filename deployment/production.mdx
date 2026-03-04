@@ -1,0 +1,574 @@
+---
+title: Production Deployment
+description: Configure Kolibri for production environments with PostgreSQL, systemd, and production-optimized settings
+---
+
+Production deployments require additional configuration for performance, reliability, and security. This guide covers PostgreSQL setup, systemd integration, and production best practices.
+
+## Production Server
+
+In production, Kolibri serves content through Whitenoise and uses pre-built frontend assets.
+
+<Steps>
+  <Step title="Build Frontend Assets">
+    ```bash
+    pnpm run build
+    ```
+
+    This compiles and compresses all JavaScript and CSS assets.
+  </Step>
+
+  <Step title="Start Production Server">
+    ```bash
+    kolibri start
+    ```
+
+    Access the server at `http://127.0.0.1:8080/` by default.
+  </Step>
+</Steps>
+
+<Note>
+  The production server uses CherryPy with Whitenoise for static file serving. Do not use `pnpm run python-devserver` in production environments.
+</Note>
+
+## PostgreSQL Configuration
+
+### Prerequisites
+
+Install PostgreSQL and the Python driver:
+
+<CodeGroup>
+```bash Ubuntu/Debian
+sudo apt-get update
+sudo apt-get install postgresql postgresql-contrib
+pip install psycopg2-binary==2.9.9
+```
+
+```bash CentOS/RHEL
+sudo yum install postgresql-server postgresql-contrib
+pip install psycopg2-binary==2.9.9
+```
+
+```bash macOS
+brew install postgresql
+pip install psycopg2-binary==2.9.9
+```
+</CodeGroup>
+
+### Database Setup
+
+<Steps>
+  <Step title="Create Database and User">
+    ```bash
+    # Switch to postgres user
+    sudo -u postgres psql
+    ```
+
+    ```sql
+    -- Create database
+    CREATE DATABASE kolibri;
+
+    -- Create user with password
+    CREATE USER kolibri_user WITH PASSWORD 'secure_password_here';
+
+    -- Grant privileges
+    GRANT ALL PRIVILEGES ON DATABASE kolibri TO kolibri_user;
+
+    -- Grant schema privileges (PostgreSQL 15+)
+    \c kolibri
+    GRANT ALL ON SCHEMA public TO kolibri_user;
+
+    -- Exit psql
+    \q
+    ```
+  </Step>
+
+  <Step title="Configure Kolibri">
+    Set environment variables or update `options.ini`:
+
+    <CodeGroup>
+    ```bash Environment Variables
+    export KOLIBRI_DATABASE_ENGINE=postgres
+    export KOLIBRI_DATABASE_NAME=kolibri
+    export KOLIBRI_DATABASE_USER=kolibri_user
+    export KOLIBRI_DATABASE_PASSWORD=secure_password_here
+    export KOLIBRI_DATABASE_HOST=localhost
+    export KOLIBRI_DATABASE_PORT=5432
+    ```
+
+    ```ini options.ini
+    [Database]
+    DATABASE_ENGINE = postgres
+    DATABASE_NAME = kolibri
+    DATABASE_USER = kolibri_user
+    DATABASE_PASSWORD = secure_password_here
+    DATABASE_HOST = localhost
+    DATABASE_PORT = 5432
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Run Migrations">
+    ```bash
+    kolibri manage migrate
+    ```
+
+    This creates all necessary database tables and indexes.
+  </Step>
+</Steps>
+
+### Database Backend Details
+
+Kolibri configures PostgreSQL with these settings (from `kolibri/deployment/default/settings/base.py`):
+
+```python
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": conf.OPTIONS["Database"]["DATABASE_NAME"],
+        "PASSWORD": conf.OPTIONS["Database"]["DATABASE_PASSWORD"],
+        "USER": conf.OPTIONS["Database"]["DATABASE_USER"],
+        "HOST": conf.OPTIONS["Database"]["DATABASE_HOST"],
+        "PORT": conf.OPTIONS["Database"]["DATABASE_PORT"],
+        "TEST": {"NAME": "test"},
+    },
+    "default-serializable": {
+        "ENGINE": "django.db.backends.postgresql",
+        # ... same connection settings ...
+        "OPTIONS": {"isolation_level": ISOLATION_LEVEL_SERIALIZABLE},
+        "TEST": {"MIRROR": "default"},
+    },
+}
+```
+
+The `default-serializable` alias provides SERIALIZABLE isolation for critical operations.
+
+<Warning>
+  SQLite uses custom database routers for splitting sessions, notifications, and sync queues into separate database files. PostgreSQL stores all data in a single database.
+</Warning>
+
+## Testing with PostgreSQL
+
+Kolibri includes a Make target for testing with a temporary PostgreSQL instance:
+
+```bash
+# Run tests with PostgreSQL backend
+make test-with-postgres
+
+# Start Kolibri in foreground with PostgreSQL
+make start-foreground-with-postgres
+```
+
+This uses Docker Compose to spin up a temporary PostgreSQL container:
+
+```bash
+# From Makefile
+export KOLIBRI_DATABASE_ENGINE=postgres
+export KOLIBRI_DATABASE_NAME=default
+export KOLIBRI_DATABASE_USER=postgres
+export KOLIBRI_DATABASE_PASSWORD=postgres
+export KOLIBRI_DATABASE_HOST=127.0.0.1
+export KOLIBRI_DATABASE_PORT=15432
+
+docker compose up --detach
+# ... wait for database to be ready ...
+make test
+docker compose down -v
+```
+
+<Note>
+  This is for testing purposes only. The database volume is ephemeral and destroyed after tests complete.
+</Note>
+
+## Systemd Integration
+
+Kolibri supports running as a `Type=notify` systemd service.
+
+### Service File Example
+
+```ini /etc/systemd/system/kolibri.service
+[Unit]
+Description=Kolibri Learning Platform
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=notify
+User=kolibri
+Group=kolibri
+Environment="KOLIBRI_HOME=/var/kolibri"
+Environment="KOLIBRI_DATABASE_ENGINE=postgres"
+Environment="KOLIBRI_DATABASE_NAME=kolibri"
+Environment="KOLIBRI_DATABASE_USER=kolibri_user"
+Environment="KOLIBRI_DATABASE_PASSWORD=secure_password_here"
+Environment="KOLIBRI_DATABASE_HOST=localhost"
+
+# Run migrations before starting server
+ExecStartPre=/usr/local/bin/kolibri configure setup
+
+# Start server with --skip-update to avoid timeout
+ExecStart=/usr/local/bin/kolibri start --skip-update
+ExecStop=/usr/local/bin/kolibri stop
+
+Restart=on-failure
+RestartSec=10
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/kolibri
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### Service Management
+
+<Steps>
+  <Step title="Create Service User">
+    ```bash
+    sudo useradd -r -s /bin/false kolibri
+    sudo mkdir -p /var/kolibri
+    sudo chown kolibri:kolibri /var/kolibri
+    ```
+  </Step>
+
+  <Step title="Install Service File">
+    ```bash
+    sudo cp kolibri.service /etc/systemd/system/
+    sudo systemctl daemon-reload
+    ```
+  </Step>
+
+  <Step title="Enable and Start Service">
+    ```bash
+    sudo systemctl enable kolibri
+    sudo systemctl start kolibri
+    ```
+  </Step>
+
+  <Step title="Check Status">
+    ```bash
+    sudo systemctl status kolibri
+    sudo journalctl -u kolibri -f
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+  Use `--skip-update` flag with `kolibri start` to prevent systemd timeout during database migrations. Run `kolibri configure setup` separately in `ExecStartPre` to handle one-time setup steps.
+</Warning>
+
+## Production Settings
+
+### Django Settings
+
+Production settings are defined in `kolibri/deployment/default/settings/base.py`:
+
+```python
+# Security settings
+SECRET_KEY = "f@ey3)y^03r9^@mou97apom*+c1m#b1!cwbm50^s4yk72xce27"
+DEBUG = conf.OPTIONS["Server"]["DEBUG"]  # Should be False in production
+ALLOWED_HOSTS = ["*"]  # Restrict in production if possible
+
+# Security headers
+SECURE_CONTENT_TYPE_NOSNIFF = True
+
+# Session configuration
+SESSION_ENGINE = "kolibri.core.auth.backends"
+SESSION_COOKIE_NAME = "kolibri"
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_COOKIE_AGE = 1200  # 20 minutes
+SESSION_COOKIE_PATH = path_prefix
+
+# CSRF protection
+CSRF_COOKIE_PATH = path_prefix
+CSRF_COOKIE_NAME = "kolibri_csrftoken"
+
+# Static files (served by Whitenoise)
+STATIC_URL = urljoin(path_prefix, "static/")
+STATIC_ROOT = os.path.join(conf.KOLIBRI_HOME, "static")
+```
+
+### Environment Configuration
+
+Recommended production environment variables:
+
+```bash
+# Core settings
+export KOLIBRI_HOME=/var/kolibri
+export KOLIBRI_HTTP_PORT=8080
+export KOLIBRI_RUN_MODE=production
+
+# Disable debug mode
+export KOLIBRI_SERVER_DEBUG=False
+export KOLIBRI_SERVER_DEBUG_LOG_DATABASE=False
+
+# Content settings
+export KOLIBRI_PATHS_CONTENT_DIR=content
+export KOLIBRI_DEPLOYMENT_MINIMUM_DISK_SPACE=1GB
+
+# Disable telemetry (optional)
+export KOLIBRI_DEPLOYMENT_DISABLE_PING=True
+
+# Thread pool (optional - auto-calculated by default)
+export KOLIBRI_SERVER_CHERRYPY_THREAD_POOL=100
+```
+
+### Content Security Policy
+
+Kolibri includes CSP headers for security:
+
+```python
+# From settings/base.py
+CSP_DEFAULT_SRC = ("'self'", "data:", "blob:") + tuple(
+    conf.OPTIONS["Deployment"]["CSP_HOST_SOURCES"]
+)
+
+CSP_SCRIPT_SRC = ("'self'", "blob:") + tuple(
+    conf.OPTIONS["Deployment"]["CSP_HOST_SOURCES"]
+)
+
+CSP_STYLE_SRC = CSP_DEFAULT_SRC + ("'unsafe-inline'",)
+
+# Allow iframe embedding for zipcontent
+CSP_FRAME_SRC = CSP_DEFAULT_SRC + frame_src
+```
+
+Customize via `options.ini`:
+
+```ini
+[Deployment]
+CSP_HOST_SOURCES = https://example.com,https://cdn.example.com
+```
+
+## Performance Optimization
+
+### Thread Pool Tuning
+
+Thread pool size is calculated based on available memory and file descriptors:
+
+```python
+# Default calculation
+MIN_POOL = 50
+MAX_POOL = 150
+
+# Scales with RAM (2GB - 6GB range)
+pool_size = MIN_POOL + (
+    (MAX_POOL - MIN_POOL) * (total_memory - 2) / (6 - 2)
+)
+
+# Constrained by file descriptors
+max_threads = (fd_limit - 64) // FD_PER_THREAD
+```
+
+Override manually if needed:
+
+```ini
+[Server]
+CHERRYPY_THREAD_POOL = 100
+```
+
+### Caching
+
+Kolibri supports memory and Redis caching:
+
+<CodeGroup>
+```ini Memory Cache (Default)
+[Cache]
+CACHE_BACKEND = memory
+```
+
+```ini Redis Cache
+[Cache]
+CACHE_BACKEND = redis
+LOCATION = redis://localhost:6379/1
+```
+</CodeGroup>
+
+Install Redis dependencies:
+
+```bash
+pip install redis==3.5.3 django-redis-cache==3.0.1
+```
+
+### Logging
+
+Configure production logging:
+
+```ini
+[Server]
+DEBUG = False
+DEBUG_LOG_DATABASE = False
+```
+
+Logs are stored in `KOLIBRI_HOME/logs/`:
+- `kolibri.txt` - Application logs
+- `cherrypy_access.log` - HTTP access logs
+- `cherrypy_error.log` - Server error logs
+
+<Note>
+  Set `KOLIBRI_NO_FILE_BASED_LOGGING=1` to disable file-based logging and log only to stdout/stderr.
+</Note>
+
+## Reverse Proxy Setup
+
+### Nginx Example
+
+```nginx
+server {
+    listen 80;
+    server_name kolibri.example.com;
+
+    # Redirect to HTTPS
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name kolibri.example.com;
+
+    ssl_certificate /etc/ssl/certs/kolibri.crt;
+    ssl_certificate_key /etc/ssl/private/kolibri.key;
+
+    client_max_body_size 100M;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # WebSocket support
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+```
+
+### Serving from Subpath
+
+To serve Kolibri from a subpath (e.g., `/kolibri/`):
+
+```ini options.ini
+[Deployment]
+URL_PATH_PREFIX = kolibri
+```
+
+```nginx nginx.conf
+location /kolibri/ {
+    proxy_pass http://127.0.0.1:8080/kolibri/;
+    # ... other proxy settings ...
+}
+```
+
+## Backup and Restore
+
+### PostgreSQL Backup
+
+```bash
+# Backup
+pg_dump -U kolibri_user -h localhost kolibri > kolibri_backup.sql
+
+# Restore
+psql -U kolibri_user -h localhost kolibri < kolibri_backup.sql
+```
+
+### Full Backup
+
+Backup the entire `KOLIBRI_HOME` directory:
+
+```bash
+# Stop Kolibri
+sudo systemctl stop kolibri
+
+# Backup
+tar -czf kolibri_backup_$(date +%Y%m%d).tar.gz /var/kolibri
+
+# Start Kolibri
+sudo systemctl start kolibri
+```
+
+<Warning>
+  Always stop Kolibri before backing up to ensure database consistency.
+</Warning>
+
+## Monitoring
+
+### Health Checks
+
+Monitor Kolibri health:
+
+```bash
+# Check if server is responding
+curl http://localhost:8080/
+
+# Check systemd status
+systemctl status kolibri
+
+# View recent logs
+journalctl -u kolibri -n 100 --no-pager
+```
+
+### Log Monitoring
+
+Monitor application logs:
+
+```bash
+# Follow application logs
+tail -f /var/kolibri/logs/kolibri.txt
+
+# Follow access logs
+tail -f /var/kolibri/logs/cherrypy_access.log
+
+# Search for errors
+grep ERROR /var/kolibri/logs/kolibri.txt
+```
+
+## Troubleshooting
+
+### Database Connection Issues
+
+```bash
+# Test PostgreSQL connection
+psql -U kolibri_user -h localhost -d kolibri
+
+# Check PostgreSQL is running
+sudo systemctl status postgresql
+
+# View PostgreSQL logs
+sudo journalctl -u postgresql -n 50
+```
+
+### Permission Issues
+
+```bash
+# Fix KOLIBRI_HOME permissions
+sudo chown -R kolibri:kolibri /var/kolibri
+sudo chmod -R 755 /var/kolibri
+```
+
+### Port Already in Use
+
+```bash
+# Find process using port 8080
+sudo lsof -i :8080
+
+# Or use a different port
+export KOLIBRI_HTTP_PORT=8081
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Android Deployment" icon="mobile" href="/deployment/android">
+    Build and distribute Android APK
+  </Card>
+  <Card title="Offline Setup" icon="wifi-slash" href="/deployment/offline-setup">
+    Pre-load content for offline deployment
+  </Card>
+</CardGroup>

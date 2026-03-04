@@ -1,0 +1,646 @@
+---
+title: Frontend Development Guide
+description: Vue.js patterns, Design System components, composables, and frontend architecture in Kolibri
+---
+
+## Overview
+
+Kolibri's frontend is built with Vue.js 2.7 and follows the Composition API pattern. This guide covers the essential patterns, components, and conventions you need to know.
+
+<Warning>
+  **Critical**: Always use the Composition API (`setup()`) for new components. Do not use the Options API (`data()`, `computed:`, `methods:`).
+</Warning>
+
+## Frontend Stack
+
+- **Framework**: Vue.js 2.7 with Composition API
+- **State Management**: Composables (Vuex is deprecated)
+- **Styling**: SCSS with RTLCSS for RTL support
+- **Build Tool**: Webpack
+- **Design System**: Kolibri Design System (KDS)
+- **Testing**: Jest + Vue Testing Library
+
+## Component Development
+
+### Component Reuse Hierarchy
+
+Before creating a new component, **always search for existing ones** in this order:
+
+<Steps>
+  <Step title="Kolibri Design System (KDS)">
+    Check the [Design System catalog](https://design-system.learningequality.org/) first. KDS provides `KButton`, `KTextbox`, `KSelect`, `KModal`, `KCircularLoader`, `KIcon`, and many more.
+  </Step>
+
+  <Step title="Core Kolibri Components">
+    Browse `packages/kolibri/components/` for components like `CoreTable`, `AuthMessage`, `BottomAppBar`, `AppBar`, etc.
+  </Step>
+
+  <Step title="Kolibri-Common Components">
+    Check `packages/kolibri-common/components/` for shared components like `AccordionContainer`, `BaseToolbar`, `MetadataChips`.
+  </Step>
+
+  <Step title="Create New Component">
+    Only create a new component if none of the above provide what you need.
+  </Step>
+</Steps>
+
+<Note>
+  If an existing component does 80% of what you need, **wrap it** - don't rewrite it.
+</Note>
+
+### Component Structure (Composition API)
+
+All new Vue components must use the `setup()` function:
+
+```vue MyComponent.vue
+<template>
+  <div :style="{ backgroundColor: $themeTokens.surface }">
+    <h1>{{ title$() }}</h1>
+    <p>{{ message }}</p>
+    <KButton @click="handleClick">
+      {{ buttonLabel$() }}
+    </KButton>
+  </div>
+</template>
+
+<script>
+import { ref, computed } from 'vue';
+import { createTranslator } from 'kolibri/utils/i18n';
+import useUser from 'kolibri/composables/useUser';
+
+const strings = createTranslator('MyComponentStrings', {
+  title: {
+    message: 'Welcome to Kolibri',
+    context: 'Page heading',
+  },
+  buttonLabel: {
+    message: 'Get started',
+    context: 'Button to begin',
+  },
+});
+
+export default {
+  name: 'MyComponent',
+  setup() {
+    // Composables
+    const { isLearner } = useUser();
+
+    // Reactive state
+    const message = ref('Hello');
+
+    // Computed properties
+    const displayMessage = computed(() => {
+      return isLearner.value ? `${message.value}, learner!` : message.value;
+    });
+
+    // Methods
+    function handleClick() {
+      message.value = 'Button clicked!';
+    }
+
+    // Expose translations
+    const { title$, buttonLabel$ } = strings;
+
+    return {
+      // Reactive refs
+      message,
+      displayMessage,
+      // Methods
+      handleClick,
+      // Translations
+      title$,
+      buttonLabel$,
+    };
+  },
+};
+</script>
+
+<style lang="scss" scoped>
+h1 {
+  font-size: 24px;
+  margin-bottom: 16px;
+}
+
+p {
+  color: $text-color;
+  padding-left: 8px; // Auto-flipped to padding-right in RTL
+}
+</style>
+```
+
+<Note>
+  Component `name` must match the filename. Use PascalCase for both.
+</Note>
+
+## State Management with Composables
+
+Composables are the **preferred** way to share state and logic. Vuex is deprecated.
+
+### Using an Existing Composable
+
+```javascript
+import { computed } from 'vue';
+import useUser from 'kolibri/composables/useUser';
+import useChannels from 'kolibri-common/composables/useChannels';
+
+export default {
+  name: 'ChannelList',
+  setup() {
+    const { isAdmin } = useUser();
+    const { channelsMap, fetchChannels } = useChannels();
+
+    const canManageChannels = computed(() => isAdmin.value);
+
+    // Fetch channels on mount
+    fetchChannels();
+
+    return {
+      channelsMap,
+      canManageChannels,
+    };
+  },
+};
+```
+
+### Creating a Composable
+
+Composables follow the `use*` naming convention:
+
+```javascript useCounter.js
+import { ref, computed } from 'vue';
+
+/**
+ * A composable for managing a counter
+ */
+export default function useCounter(initialValue = 0) {
+  // Reactive state
+  const count = ref(initialValue);
+
+  // Computed properties
+  const doubled = computed(() => count.value * 2);
+
+  // Methods
+  function increment() {
+    count.value++;
+  }
+
+  function decrement() {
+    count.value--;
+  }
+
+  function reset() {
+    count.value = initialValue;
+  }
+
+  // Return public API
+  return {
+    count,
+    doubled,
+    increment,
+    decrement,
+    reset,
+  };
+}
+```
+
+### Shared State Pattern
+
+For globally-shared state, define refs at the module level:
+
+```javascript useChannels.js
+import { ref, reactive } from 'vue';
+import { get, set } from '@vueuse/core';
+import ChannelResource from 'kolibri-common/apiResources/ChannelResource';
+
+// Module-level state - shared across all consumers
+const channelsMap = reactive({});
+const localChannelsCache = ref([]);
+
+function fetchChannels(params) {
+  return ChannelResource.list({ available: true, ...params }).then(channels => {
+    for (const channel of channels) {
+      set(channelsMap, channel.id, channel);
+    }
+    if (Object.keys(params).length === 0) {
+      set(localChannelsCache, channels);
+    }
+    return channels;
+  });
+}
+
+export default function useChannels() {
+  return {
+    channelsMap,       // Shared state
+    localChannelsCache, // Shared state
+    fetchChannels,
+  };
+}
+```
+
+<Warning>
+  Use module-level state sparingly. Only use it when multiple components truly need to access the same data.
+</Warning>
+
+See the [Composables guide](/guides/frontend-development#composables) for more patterns.
+
+## Styling and Theming
+
+### Always Use Theme Tokens
+
+<Warning>
+  **Never use hard-coded color values.** Always use `$themeTokens` and `$themePalette`.
+</Warning>
+
+```vue
+<template>
+  <div :style="{
+    color: $themeTokens.text,
+    backgroundColor: $themeTokens.surface
+  }">
+    <p :style="{ color: $themeTokens.annotation }">
+      Secondary text
+    </p>
+  </div>
+</template>
+```
+
+Common theme tokens:
+- `$themeTokens.text` - Primary text color
+- `$themeTokens.annotation` - Secondary text color
+- `$themeTokens.surface` - Surface background
+- `$themeTokens.primary` - Primary brand color
+- `$themeTokens.error` - Error state color
+
+For dynamic styles in computed properties, use `$computedClass`.
+
+### Style Blocks, Not Inline Styles
+
+<Warning>
+  Use `<style>` blocks for non-dynamic styles. RTL support (RTLCSS) **cannot flip inline styles**.
+</Warning>
+
+```vue
+<!-- ❌ Wrong: Inline styles don't flip for RTL -->
+<template>
+  <div style="padding-left: 16px;">
+    Content
+  </div>
+</template>
+
+<!-- ✅ Correct: Style blocks auto-flip for RTL -->
+<template>
+  <div class="content">
+    Content
+  </div>
+</template>
+
+<style scoped>
+.content {
+  padding-left: 16px; /* Auto-flips to padding-right in RTL */
+}
+</style>
+```
+
+For dynamic directional styles, use the `isRtl` property:
+
+```javascript
+setup() {
+  function scrollForward() {
+    if (this.isRtl) {
+      scrollLeft();
+    } else {
+      scrollRight();
+    }
+  }
+}
+```
+
+### Responsive Design
+
+<Warning>
+  Do **not** use CSS `@media` queries. Use the `responsive-window` or `responsive-element` system.
+</Warning>
+
+Kolibri runs on varied screen sizes including Android devices. The responsive system provides breakpoints:
+
+```javascript
+import useKResponsiveWindow from 'kolibri-common/composables/useKResponsiveWindow';
+
+export default {
+  setup() {
+    const { windowIsSmall, windowBreakpoint } = useKResponsiveWindow();
+
+    return {
+      windowIsSmall,
+      windowBreakpoint,
+    };
+  },
+};
+```
+
+## API Calls with Resources
+
+<Warning>
+  Use `Resource` classes for all API calls. **Never** use raw `fetch` or `axios`.
+</Warning>
+
+### Define API Resources
+
+Create resources in `apiResources.js`:
+
+```javascript apiResources.js
+import { Resource } from 'kolibri/apiResource';
+
+/**
+ * Gets Lessons assigned to the learner
+ */
+export const LearnerLessonResource = new Resource({
+  name: 'learnerlesson',
+  namespace: 'kolibri.plugins.learn',
+});
+
+export const LearnerCourseResource = new Resource({
+  name: 'learnercourse',
+  namespace: 'kolibri.plugins.learn',
+  // Custom method
+  async getResumeData(id) {
+    const response = await this.accessDetailEndpoint('get', 'resume', id);
+    return response.data;
+  },
+});
+```
+
+### Use Resources in Components
+
+```javascript
+import { ref } from 'vue';
+import { LearnerLessonResource } from '../apiResources';
+
+export default {
+  setup() {
+    const lessons = ref([]);
+    const loading = ref(false);
+
+    async function loadLessons() {
+      loading.value = true;
+      try {
+        lessons.value = await LearnerLessonResource.fetchCollection();
+      } catch (error) {
+        console.error('Failed to load lessons:', error);
+      } finally {
+        loading.value = false;
+      }
+    }
+
+    return {
+      lessons,
+      loading,
+      loadLessons,
+    };
+  },
+};
+```
+
+## Internationalization (i18n)
+
+<Warning>
+  **All user-visible text must be internationalized.** Never hard-code strings in templates.
+</Warning>
+
+### Using createTranslator
+
+```javascript
+import { createTranslator } from 'kolibri/utils/i18n';
+
+const strings = createTranslator('QuizStrings', {
+  title: {
+    message: 'Quiz Results',
+    context: 'Page heading',
+  },
+  score: {
+    message: 'You scored {score} out of {total}',
+    context: 'Score display',
+  },
+  questionsLabel: {
+    message: '{count, plural, one {# question} other {# questions}}',
+    context: 'Number of questions',
+  },
+});
+
+export default {
+  setup() {
+    // Destructure with $ suffix for use in templates
+    const { title$, score$, questionsLabel$ } = strings;
+
+    return {
+      title$,
+      score$,
+      questionsLabel$,
+    };
+  },
+};
+```
+
+In template:
+
+```vue
+<template>
+  <div>
+    <h1>{{ title$() }}</h1>
+    <p>{{ score$({ score: 8, total: 10 }) }}</p>
+    <p>{{ questionsLabel$({ count: 5 }) }}</p>
+  </div>
+</template>
+```
+
+### ICU Message Syntax
+
+Use ICU syntax for plurals, variables, and formatting:
+
+```javascript
+{
+  itemCount: {
+    message: '{count, plural, one {# item} other {# items}}',
+    context: 'Number of items',
+  },
+  greeting: {
+    message: 'Hello, {name}!',
+    context: 'User greeting',
+  },
+}
+```
+
+See the [Internationalization guide](/guides/internationalization) for complete details.
+
+## Icons
+
+Always use the `KIcon` component from the Design System:
+
+```vue
+<template>
+  <KIcon icon="add" />
+  <KIcon icon="forward" /> <!-- Auto-flips in RTL -->
+  <KIconButton icon="close" @click="handleClose" />
+</template>
+```
+
+Browse available icons at the [Design System Icons page](https://design-system.learningequality.org/icons).
+
+## Common Patterns
+
+### Loading States
+
+```vue
+<template>
+  <div>
+    <KCircularLoader v-if="loading" />
+    <div v-else>
+      <p v-for="item in items" :key="item.id">
+        {{ item.name }}
+      </p>
+    </div>
+  </div>
+</template>
+
+<script>
+import { ref } from 'vue';
+
+export default {
+  setup() {
+    const loading = ref(true);
+    const items = ref([]);
+
+    async function loadData() {
+      loading.value = true;
+      try {
+        items.value = await fetchItems();
+      } finally {
+        loading.value = false;
+      }
+    }
+
+    return { loading, items, loadData };
+  },
+};
+</script>
+```
+
+### Forms with Validation
+
+```vue
+<template>
+  <form @submit.prevent="handleSubmit">
+    <KTextbox
+      v-model="username"
+      :label="usernameLabel$()"
+      :invalid="usernameError"
+      :invalidText="usernameError"
+    />
+    <KButton type="submit" :disabled="!isValid">
+      {{ submitLabel$() }}
+    </KButton>
+  </form>
+</template>
+
+<script>
+import { ref, computed } from 'vue';
+
+export default {
+  setup() {
+    const username = ref('');
+    const usernameError = ref('');
+
+    const isValid = computed(() => {
+      return username.value.length >= 3;
+    });
+
+    function handleSubmit() {
+      if (!isValid.value) {
+        usernameError.value = 'Username must be at least 3 characters';
+        return;
+      }
+      // Submit form
+    }
+
+    return {
+      username,
+      usernameError,
+      isValid,
+      handleSubmit,
+    };
+  },
+};
+</script>
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Composition API for all new code">
+    New components must use `setup()`. Do not use Options API (`data()`, `computed:`, `methods:`).
+  </Accordion>
+
+  <Accordion title="Search for existing components first">
+    Check KDS, `kolibri/components/`, and `kolibri-common/components/` before creating new components.
+  </Accordion>
+
+  <Accordion title="Use composables, not Vuex">
+    Vuex is deprecated. Use composables for state management.
+  </Accordion>
+
+  <Accordion title="Always use theme tokens">
+    Never hard-code colors. Use `$themeTokens` and `$themePalette`.
+  </Accordion>
+
+  <Accordion title="Internationalize all text">
+    Use `createTranslator` for all user-visible strings.
+  </Accordion>
+
+  <Accordion title="Use Resource classes for API calls">
+    Never use raw `fetch` or `axios`. Define resources in `apiResources.js`.
+  </Accordion>
+
+  <Accordion title="Style blocks for RTL support">
+    Put non-dynamic styles in `<style>` blocks so RTLCSS can flip them for RTL languages.
+  </Accordion>
+
+  <Accordion title="Component name matches filename">
+    Both should be PascalCase and identical.
+  </Accordion>
+</AccordionGroup>
+
+## Testing
+
+Write tests for all components. See the [Testing guide](/guides/testing) for details.
+
+```javascript MyComponent.spec.js
+import { render, screen } from '@testing-library/vue';
+import MyComponent from '../MyComponent.vue';
+
+describe('MyComponent', () => {
+  it('renders the title', () => {
+    render(MyComponent, {
+      props: { title: 'Test Title' },
+    });
+
+    expect(screen.getByText('Test Title')).toBeTruthy();
+  });
+});
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Kolibri Design System" icon="palette" href="https://design-system.learningequality.org/">
+    Explore all available components and patterns
+  </Card>
+  <Card title="Testing Guide" icon="flask" href="/guides/testing">
+    Learn how to write frontend tests with Jest
+  </Card>
+  <Card title="Internationalization" icon="language" href="/guides/internationalization">
+    Deep dive into i18n workflow and patterns
+  </Card>
+  <Card title="Backend Development" icon="server" href="/guides/backend-development">
+    Understand the Django backend and API patterns
+  </Card>
+</CardGroup>

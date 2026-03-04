@@ -1,0 +1,237 @@
+---
+title: Introduction to Kolibri
+description: Learn about Kolibri, the offline-first learning platform for teaching and learning with technology without requiring the Internet
+---
+
+## What is Kolibri?
+
+Kolibri is an open-source, offline-first learning platform designed to bring high-quality educational content to communities with limited or no internet connectivity. Developed by [Learning Equality](https://learningequality.org/), Kolibri enables teachers, coaches, and learners to access educational resources in environments where traditional online platforms are not viable.
+
+<Note>
+  Kolibri is MIT-licensed and freely available for use. The project welcomes contributions from developers worldwide.
+</Note>
+
+## Key Features
+
+### Offline-First Architecture
+
+Kolibri is designed to work entirely offline, making education accessible in low-resource environments:
+
+- **No internet required** for day-to-day use
+- **Content can be imported** via USB drives, local networks, or one-time internet downloads
+- **Peer-to-peer synchronization** allows devices to share content and data without internet
+
+### Flexible Deployment
+
+Kolibri runs on a wide variety of platforms and devices:
+
+- **Desktop platforms**: Windows, macOS, Linux
+- **Server deployments**: Ubuntu/Debian servers, Raspberry Pi
+- **Mobile platforms**: Android (via Python-for-Android)
+- **Containerized environments**: Docker support
+
+### Plugin Architecture
+
+Kolibri uses a modular plugin system that allows for extensibility and customization:
+
+```python
+# Example: Internal plugins defined in kolibri/__init__.py
+INTERNAL_PLUGINS = [
+    "kolibri.plugins.learn",       # Learner interface
+    "kolibri.plugins.coach",       # Teacher/coach tools
+    "kolibri.plugins.facility",    # User and facility management
+    "kolibri.plugins.device",      # Device configuration
+    "kolibri.plugins.setup_wizard", # Initial setup
+    # ... and more
+]
+```
+
+Each plugin can provide:
+- Frontend interfaces (Vue.js components)
+- Backend APIs (Django REST Framework)
+- Custom content renderers
+- Navigation elements and hooks
+
+### Multi-User Support
+
+Kolibri includes comprehensive user and facility management:
+
+- **Role-based access control**: Learners, coaches, facility admins, and super admins
+- **Multiple facilities** on a single device
+- **Progress tracking** and reporting for learners
+- **Class and group management** for organizing users
+
+### Content Ecosystem
+
+Kolibri can host diverse educational content:
+
+- **Khan Academy** exercises and videos
+- **PDF documents** and eBooks (EPUB)
+- **Interactive HTML5** applications
+- **Videos** with subtitles and multiple languages
+- **Quizzes and assessments** (Perseus, QTI formats)
+- **Slideshows** and presentations
+
+### Internationalization
+
+Kolibri supports over 35 languages and is designed for global use:
+
+- **RTL (Right-to-Left)** language support
+- **Custom fonts** for non-Latin scripts
+- **Translation infrastructure** using Crowdin
+- **Locale-aware** date, time, and number formatting
+
+## Architecture Overview
+
+### Backend: Python/Django
+
+The server is built with Django and includes:
+
+```python
+# Core dependencies from requirements/base.txt
+django==3.2.25
+djangorestframework==3.14.0
+morango==0.8.6  # Syncing framework
+le-utils==0.2.13  # Learning Equality utilities
+cheroot==10.0.1  # WSGI server
+```
+
+Key backend features:
+- **Database support**: SQLite (default) and PostgreSQL
+- **REST API**: Django REST Framework with custom `ValuesViewset` patterns
+- **Authentication**: Django-based with role-based permissions
+- **Task queue**: Background job processing for imports and syncs
+- **Morango**: Custom synchronization framework for offline data sync
+
+### Frontend: Vue.js
+
+The client-side interface uses modern JavaScript:
+
+```javascript
+// Technology stack
+{
+  "vue": "2.7.16",  // Progressive framework
+  "vuex": "...",     // State management (being phased out)
+  "webpack": "5.x",  // Build system
+  "jest": "30.x"     // Testing framework
+}
+```
+
+Frontend features:
+- **Vue 2.7 Composition API**: Modern reactive patterns with `setup()`
+- **Design system**: Reusable components (`KButton`, `KModal`, `KTextbox`, etc.)
+- **Theme tokens**: Consistent styling with `$themeTokens` and `$themePalette`
+- **Responsive design**: Mobile-first with responsive-window/responsive-element systems
+- **Accessibility**: ARIA attributes and keyboard navigation
+
+### Build System
+
+Kolibri uses a sophisticated build pipeline:
+
+```bash
+# Frontend build (from package.json)
+pnpm run build          # Production build
+pnpm run watch          # Development watch mode
+pnpm run watch-hot      # Hot module replacement
+
+# Python distribution
+make dist               # Create wheel files
+make pex                # Create portable .pex executables
+```
+
+The build process handles:
+- ES6 → ES5 transpilation (Bublé)
+- Vue Single File Components
+- SCSS → CSS with auto-prefixing
+- Code minification and compression
+- Bundle splitting and lazy loading
+- Asset optimization (fonts, images)
+
+## Who is Kolibri For?
+
+### End Users
+
+- **Learners**: Students in schools, community centers, or home environments without reliable internet
+- **Teachers/Coaches**: Educators managing classes and tracking student progress
+- **Administrators**: IT staff deploying and managing Kolibri installations
+
+### Developers
+
+This documentation is for **developers who want to contribute** to Kolibri:
+
+- **Frontend developers**: Building UI components, improving UX, adding features
+- **Backend developers**: Working on APIs, data models, synchronization, performance
+- **Plugin developers**: Creating custom plugins for specialized use cases
+- **DevOps engineers**: Improving build systems, CI/CD, deployment tools
+- **QA engineers**: Writing tests, improving test coverage, manual testing
+
+<Warning>
+  If you're looking for help **using** Kolibri (not developing it), please see the [User Guide](https://kolibri.readthedocs.io/) instead.
+</Warning>
+
+## Technology Requirements
+
+To develop Kolibri, you'll need:
+
+- **Python**: 3.9 or higher (but below 3.14)
+- **Node.js**: Version 20.19.x (required)
+- **pnpm**: Package manager for JavaScript dependencies
+- **Git**: Version control with Git LFS extension
+- **Operating System**: Linux or macOS recommended (Windows via WSL)
+
+## Project Philosophy
+
+### Offline-First
+
+Every feature must work without internet. Network connectivity is a bonus, not a requirement.
+
+### Low-Resource Environments
+
+Kolibri must run on modest hardware:
+- Single-board computers (Raspberry Pi)
+- Older desktop computers
+- Shared servers with many concurrent users
+
+### Accessibility and Inclusion
+
+Education should be available to everyone:
+- Support for assistive technologies
+- Multi-language support including RTL languages
+- Simple, intuitive interfaces for users with varying technical skills
+
+### Open Source
+
+Kolibri is built in the open:
+- MIT license allows free use and modification
+- Community-driven development
+- Transparent decision-making and roadmap
+
+## Getting Help
+
+As you work with Kolibri, you can:
+
+- **Ask questions** in the [community forums](https://community.learningequality.org/)
+- **Report bugs** via [GitHub issues](https://github.com/learningequality/kolibri/issues)
+- **Join the conversation** in developer chat channels
+- **Read the docs**: This developer documentation plus the [User Guide](https://kolibri.readthedocs.io/)
+
+<Note>
+  The Kolibri project was founded by volunteers dedicated to making educational materials more accessible to those in need. Every contribution, large or small, makes a difference.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get Kolibri running locally in minutes
+  </Card>
+  <Card title="Installation Guide" icon="download" href="/installation">
+    Detailed setup for all platforms
+  </Card>
+  <Card title="Architecture" icon="sitemap" href="/concepts/architecture">
+    Deep dive into Kolibri's technical design
+  </Card>
+  <Card title="Contributing" icon="code" href="/contributing">
+    Learn how to contribute code
+  </Card>
+</CardGroup>

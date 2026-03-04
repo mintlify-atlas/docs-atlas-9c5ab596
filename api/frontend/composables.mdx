@@ -1,0 +1,562 @@
+---
+title: Vue Composables
+description: Reusable Vue 3 composables for state management, user sessions, channels, responsive layouts, and more
+---
+
+Composables are reusable functions that encapsulate stateful logic using Vue's Composition API. They are the **preferred approach** for state management in Kolibri, replacing Vuex (which is deprecated).
+
+## Overview
+
+Composables follow the naming convention `use*` (e.g., `useUser`, `useChannels`) and provide reactive state and methods that can be shared across components.
+
+**Key Benefits:**
+- Reusability across components
+- Easy to test in isolation
+- No boilerplate compared to Vuex
+- Type-safe and composable
+
+## Core Composables
+
+### useUser
+
+Provides access to current user session state and authentication.
+
+**Source:** `packages/kolibri/composables/useUser.js`
+
+```javascript
+import useUser from 'kolibri/composables/useUser';
+
+export default {
+  setup() {
+    const {
+      // User info
+      currentUserId,
+      username,
+      full_name,
+      
+      // Session
+      session,
+      sessionId,
+      isUserLoggedIn,
+      
+      // Permissions
+      isAdmin,
+      isSuperuser,
+      isCoach,
+      isLearner,
+      canManageContent,
+      
+      // Actions
+      login,
+      logout,
+    } = useUser();
+
+    return {
+      currentUserId,
+      isAdmin,
+      logout,
+    };
+  },
+};
+```
+
+#### State Properties
+
+**User Information:**
+- **currentUserId**: Current user's ID (computed)
+- **username**: Current username (computed)
+- **full_name**: User's full name (computed)
+- **session**: Complete session object (computed)
+- **sessionId**: Session ID (computed)
+- **kind**: Array of user kinds (computed)
+
+**Authentication:**
+- **isUserLoggedIn**: Whether user is authenticated (computed)
+- **userFacilityId**: User's facility ID (computed)
+
+**Role Checks:**
+- **isAdmin**: Whether user is admin or superuser (computed)
+- **isSuperuser**: Whether user is superuser (computed)
+- **isCoach**: Whether user is a coach (computed)
+- **isFacilityCoach**: Whether user is facility coach (computed)
+- **isClassCoach**: Whether user is class coach (computed)
+- **isLearner**: Whether user is a learner (computed)
+- **isFacilityAdmin**: Whether user is facility admin (computed)
+
+**Permissions:**
+- **canManageContent**: Whether user can manage content (computed)
+- **userPermissions**: Object of user permissions (computed)
+- **userHasPermissions**: Whether user has any permissions (computed)
+
+**Context:**
+- **isAppContext**: Whether running in app context (computed)
+- **isLearnerOnlyImport**: Whether facility is learner-only import (computed)
+- **userKind**: Primary user kind (computed)
+
+#### Methods
+
+**login(sessionPayload)**
+
+Logs in a user.
+
+```javascript
+const { login } = useUser();
+
+const result = await login({
+  username: 'user',
+  password: 'password',
+  next: '/learn', // Optional redirect
+  disableRedirect: false, // Set true to prevent auto-redirect
+});
+
+if (result === LoginErrors.INVALID_CREDENTIALS) {
+  // Handle error
+}
+```
+
+**logout()**
+
+Logs out the current user and redirects to logout page.
+
+```javascript
+const { logout } = useUser();
+
+logout();
+```
+
+**setSession({ session, clientNow })**
+
+Updates session state (typically called internally).
+
+### useChannels
+
+Manages channels data with shared state across components.
+
+**Source:** `packages/kolibri-common/composables/useChannels.js`
+
+```javascript
+import useChannels from 'kolibri-common/composables/useChannels';
+
+export default {
+  setup() {
+    const {
+      channelsMap,
+      localChannelsCache,
+      fetchChannels,
+      getChannelTitle,
+      getChannelThumbnail,
+    } = useChannels();
+
+    // Fetch channels on mount
+    fetchChannels();
+
+    return {
+      channelsMap,
+      getChannelTitle,
+    };
+  },
+};
+```
+
+#### State Properties
+
+- **channelsMap**: Reactive object mapping channel IDs to channel data
+- **localChannelsCache**: Reactive ref containing array of local channels
+
+#### Methods
+
+**fetchChannels(params)**
+
+Fetches channels from the API.
+
+- **params**: Optional query parameters
+- **Returns**: Promise resolving to array of channels
+
+```javascript
+// Fetch all available channels
+const channels = await fetchChannels();
+
+// Fetch with filters
+const filtered = await fetchChannels({ available: true });
+```
+
+**getChannelTitle(channelId)**
+
+Gets channel title by ID from cache.
+
+```javascript
+const title = getChannelTitle('channel-id');
+```
+
+**getChannelThumbnail(channelId)**
+
+Gets channel thumbnail URL by ID from cache.
+
+```javascript
+const thumbnail = getChannelThumbnail('channel-id');
+```
+
+### useTaskPolling
+
+Polls for tasks in a specific queue with automatic lifecycle management.
+
+**Source:** `packages/kolibri-common/composables/useTaskPolling.js`
+
+```javascript
+import useTaskPolling from 'kolibri-common/composables/useTaskPolling';
+
+export default {
+  setup() {
+    // Automatically starts polling on mount, stops on unmount
+    const { tasks } = useTaskPolling('content_import');
+
+    return { tasks };
+  },
+};
+```
+
+#### State Properties
+
+- **tasks**: Reactive ref containing array of tasks for the queue
+
+**Features:**
+- Polls every 5 seconds
+- Automatically starts on component mount
+- Automatically stops on component unmount
+- Shared polling across multiple components using same queue
+- Only one active poller per queue name
+
+### useSnackbar
+
+Creates and displays snackbar notifications.
+
+**Source:** `packages/kolibri/composables/useSnackbar.js`
+
+```javascript
+import useSnackbar from 'kolibri/composables/useSnackbar';
+
+export default {
+  setup() {
+    const { createSnackbar } = useSnackbar();
+
+    function saveData() {
+      // Perform save...
+      createSnackbar({ text: 'Data saved successfully' });
+    }
+
+    return { saveData };
+  },
+};
+```
+
+#### Methods
+
+**createSnackbar(options)**
+
+Displays a snackbar notification.
+
+```javascript
+// Simple text
+createSnackbar({ text: 'Operation complete' });
+
+// With action button
+createSnackbar({
+  text: 'Item deleted',
+  actionText: 'Undo',
+  actionCallback: undoDelete,
+});
+
+// Error notification
+createSnackbar({
+  text: 'An error occurred',
+  autoDismiss: false,
+});
+```
+
+**Options:**
+- **text**: Notification text (required)
+- **actionText**: Text for action button
+- **actionCallback**: Function to call when action clicked
+- **autoDismiss**: Whether to auto-dismiss (default: true)
+- **duration**: Duration before auto-dismiss in ms
+- **hideCallback**: Function called when snackbar is hidden
+
+## Responsive Helpers
+
+### useKResponsiveWindow
+
+Provides reactive window size information and breakpoint helpers.
+
+**Source:** `kolibri-design-system/lib/composables/useKResponsiveWindow.js`
+
+```javascript
+import useKResponsiveWindow from 'kolibri-design-system/lib/composables/useKResponsiveWindow';
+
+export default {
+  setup() {
+    const {
+      windowIsSmall,
+      windowIsMedium,
+      windowIsLarge,
+      windowBreakpoint,
+      windowWidth,
+      windowHeight,
+    } = useKResponsiveWindow();
+
+    return {
+      windowIsSmall,
+    };
+  },
+};
+```
+
+#### State Properties
+
+All properties are computed refs that update reactively:
+
+- **windowIsSmall**: Window width < 600px (boolean)
+- **windowIsMedium**: Window width >= 600px and < 840px (boolean)
+- **windowIsLarge**: Window width >= 840px (boolean)
+- **windowBreakpoint**: Current breakpoint (0-7)
+- **windowWidth**: Window width in pixels
+- **windowHeight**: Window height in pixels
+
+**Breakpoints:**
+- 0: < 480px
+- 1: < 600px
+- 2: < 840px
+- 3: < 960px
+- 4: < 1280px
+- 5: < 1440px
+- 6: < 1920px
+- 7: >= 1920px
+
+### useKResponsiveElement
+
+Provides reactive element size information.
+
+```javascript
+import useKResponsiveElement from 'kolibri-design-system/lib/composables/useKResponsiveElement';
+import { ref } from 'vue';
+
+export default {
+  setup() {
+    const elementRef = ref(null);
+    const {
+      elementWidth,
+      elementHeight,
+      elementIsSmall,
+    } = useKResponsiveElement(elementRef);
+
+    return {
+      elementRef,
+      elementWidth,
+      elementIsSmall,
+    };
+  },
+};
+```
+
+#### Usage in Template
+
+```vue
+<template>
+  <div ref="elementRef">
+    <p v-if="elementIsSmall">Compact view</p>
+    <p v-else>Full view</p>
+  </div>
+</template>
+```
+
+## Utility Composables
+
+### useFacilities
+
+Manages facilities data.
+
+**Source:** `packages/kolibri-common/composables/useFacilities.js`
+
+```javascript
+import useFacilities from 'kolibri-common/composables/useFacilities';
+
+const { facilities, fetchFacilities, currentFacilityId } = useFacilities();
+await fetchFacilities();
+```
+
+### usePreviousRoute
+
+Tracks the previous route for navigation purposes.
+
+**Source:** `packages/kolibri-common/composables/usePreviousRoute.js`
+
+```javascript
+import usePreviousRoute from 'kolibri-common/composables/usePreviousRoute';
+
+const { previousRoute } = usePreviousRoute();
+
+if (previousRoute.value) {
+  // Navigate back
+  router.push(previousRoute.value);
+}
+```
+
+### useNow
+
+Provides a reactive timestamp that updates periodically.
+
+**Source:** `packages/kolibri/composables/useNow.js`
+
+```javascript
+import useNow from 'kolibri/composables/useNow';
+
+const { now } = useNow();
+
+// Use for relative time displays
+const timeAgo = computed(() => {
+  return formatDistanceToNow(someDate, { relativeTo: now.value });
+});
+```
+
+## Creating Custom Composables
+
+### Basic Structure
+
+```javascript
+import { ref, computed } from 'vue';
+
+/**
+ * A composable function for managing items
+ */
+export default function useItems() {
+  // Reactive state
+  const items = ref([]);
+  const isLoading = ref(false);
+
+  // Computed properties
+  const itemCount = computed(() => items.value.length);
+
+  // Methods
+  async function fetchItems() {
+    isLoading.value = true;
+    try {
+      items.value = await api.getItems();
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  function addItem(item) {
+    items.value.push(item);
+  }
+
+  // Return public API
+  return {
+    items,
+    isLoading,
+    itemCount,
+    fetchItems,
+    addItem,
+  };
+}
+```
+
+### Shared State Pattern
+
+For global state, define refs at module level:
+
+```javascript
+import { ref, reactive } from 'vue';
+
+// Module-level state - shared across all consumers
+const sharedState = reactive({});
+const sharedData = ref([]);
+
+export default function useSharedResource() {
+  function updateState(key, value) {
+    sharedState[key] = value;
+  }
+
+  return {
+    sharedState,
+    sharedData,
+    updateState,
+  };
+}
+```
+
+### With Lifecycle Hooks
+
+```javascript
+import { ref, onMounted, onUnmounted } from 'vue';
+
+export default function useEventListener(target, event, handler) {
+  onMounted(() => {
+    target.addEventListener(event, handler);
+  });
+
+  onUnmounted(() => {
+    target.removeEventListener(event, handler);
+  });
+}
+```
+
+## Best Practices
+
+1. **Name consistently**: Always use `use*` prefix
+2. **Keep focused**: Each composable should have a single, clear purpose
+3. **Document with JSDoc**: Include function and parameter documentation
+4. **Return consistent interface**: Return an object with clear, named properties
+5. **Handle cleanup**: Use `onUnmounted` for cleanup (event listeners, timers)
+6. **Module-level state sparingly**: Use only when truly needed globally
+7. **Test in isolation**: Write unit tests separate from components
+
+## Testing Composables
+
+```javascript
+import { ref } from 'vue';
+import useItems from '../useItems';
+
+describe('useItems', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should fetch items', async () => {
+    const { items, fetchItems, isLoading } = useItems();
+    
+    expect(isLoading.value).toBe(false);
+    
+    const promise = fetchItems();
+    expect(isLoading.value).toBe(true);
+    
+    await promise;
+    expect(items.value.length).toBeGreaterThan(0);
+    expect(isLoading.value).toBe(false);
+  });
+
+  it('should add items', () => {
+    const { items, addItem, itemCount } = useItems();
+    
+    addItem({ id: 1, name: 'Test' });
+    expect(itemCount.value).toBe(1);
+  });
+});
+```
+
+## Migration from Vuex
+
+Vuex is deprecated. Use composables instead:
+
+| Vuex | Composables |
+|------|-------------|
+| `store.state.items` | `const items = ref([])` |
+| `store.getters.itemCount` | `const itemCount = computed(() => items.value.length)` |
+| `store.commit('setItems', data)` | `items.value = data` |
+| `store.dispatch('fetchItems')` | `async function fetchItems() { ... }` |
+
+## See Also
+
+- [Frontend Development Guide](/guides/frontend-development)
+- [Vue Composition API Guide](https://v3.vuejs.org/guide/composition-api-introduction.html)
+- [@vueuse/core Documentation](https://vueuse.org/)
+- [Core JavaScript API](/api/frontend/core-api)

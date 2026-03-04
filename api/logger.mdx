@@ -1,0 +1,480 @@
+---
+title: "Logging & Progress"
+description: "API endpoints for tracking learning progress, session logs, and mastery data"
+---
+
+## Progress Tracking
+
+### Start Session
+
+Initialize a new content session to track progress.
+
+```bash POST /api/logger/contentsession
+curl -X POST http://localhost:8080/api/logger/contentsession \
+  -H "Content-Type: application/json" \
+  -d '{
+    "node_id": "content-node-uuid",
+    "content_id": "content-uuid",
+    "channel_id": "channel-uuid",
+    "kind": "video"
+  }'
+```
+
+#### Request Parameters
+
+<ParamField body="node_id" type="string">
+  UUID of the content node (required unless quiz_id is provided)
+</ParamField>
+
+<ParamField body="content_id" type="string">
+  Content identifier
+</ParamField>
+
+<ParamField body="channel_id" type="string">
+  Channel UUID
+</ParamField>
+
+<ParamField body="kind" type="string">
+  Content kind: `video`, `audio`, `document`, `exercise`, `html5`, `topic`
+</ParamField>
+
+<ParamField body="lesson_id" type="string">
+  UUID of lesson if content is being accessed within a lesson
+</ParamField>
+
+<ParamField body="quiz_id" type="string">
+  UUID of exam/quiz (alternative to node_id for coach-assigned quizzes)
+</ParamField>
+
+<ParamField body="mastery_model" type="object">
+  Mastery criterion for exercises (required if kind is "exercise")
+</ParamField>
+
+<ParamField body="repeat" type="boolean">
+  Whether to reset previous progress and start fresh (default: false)
+</ParamField>
+
+<ParamField body="course_session_id" type="string">
+  Course session identifier
+</ParamField>
+
+#### Response Fields
+
+<ResponseField name="session_id" type="string">
+  Unique session identifier to use for subsequent updates
+</ResponseField>
+
+<ResponseField name="context" type="object">
+  Context object with node_id, lesson_id, quiz_id, mastery_level as appropriate
+</ResponseField>
+
+<ResponseField name="progress" type="number">
+  Previous progress on this content (0.0 to 1.0)
+</ResponseField>
+
+<ResponseField name="time_spent" type="number">
+  Previous time spent in seconds
+</ResponseField>
+
+<ResponseField name="extra_fields" type="object">
+  Additional stored data for this resource
+</ResponseField>
+
+<ResponseField name="complete" type="boolean">
+  Whether this resource is completed
+</ResponseField>
+
+**For exercises/assessments, also returns:**
+
+<ResponseField name="mastery_criterion" type="object">
+  Mastery criterion to apply
+</ResponseField>
+
+<ResponseField name="pastattempts" type="array">
+  Array of recent attempt objects
+</ResponseField>
+
+<ResponseField name="totalattempts" type="integer">
+  Total number of previous attempts
+</ResponseField>
+
+### Update Session
+
+Update progress for an active session.
+
+```bash PUT /api/logger/contentsession/:session_id
+curl -X PUT http://localhost:8080/api/logger/contentsession/session-uuid \
+  -H "Content-Type: application/json" \
+  -d '{
+    "progress_delta": 0.25,
+    "time_spent_delta": 30
+  }'
+```
+
+#### Request Parameters
+
+<ParamField body="progress_delta" type="number">
+  Amount to increase progress by (0.0 to 1.0)
+</ParamField>
+
+<ParamField body="progress" type="number">
+  Set progress to this absolute value (alternative to progress_delta)
+</ParamField>
+
+<ParamField body="time_spent_delta" type="number">
+  Seconds to add to time spent
+</ParamField>
+
+<ParamField body="extra_fields" type="object">
+  Complete representation to set extra_fields to
+</ParamField>
+
+<ParamField body="interactions" type="array">
+  Array of interaction objects for assessment attempts
+</ParamField>
+
+#### Interaction Object (for exercises)
+
+<ParamField body="item" type="string" required>
+  Question/item identifier
+</ParamField>
+
+<ParamField body="correct" type="number" required>
+  Correctness score (0.0 to 1.0)
+</ParamField>
+
+<ParamField body="time_spent" type="number" required>
+  Time spent on this attempt in seconds
+</ParamField>
+
+<ParamField body="complete" type="boolean">
+  Whether this attempt is complete (default: false)
+</ParamField>
+
+<ParamField body="answer" type="object">
+  The answer object
+</ParamField>
+
+<ParamField body="simple_answer" type="string">
+  Simple string representation of answer
+</ParamField>
+
+<ParamField body="error" type="boolean">
+  Whether an error occurred (default: false)
+</ParamField>
+
+<ParamField body="hinted" type="boolean">
+  Whether hints were used (default: false)
+</ParamField>
+
+<ParamField body="replace" type="boolean">
+  Replace existing attempt with same item (default: false)
+</ParamField>
+
+<ParamField body="id" type="string">
+  Attempt ID to update (if updating existing attempt)
+</ParamField>
+
+#### Response Fields
+
+<ResponseField name="complete" type="boolean">
+  Whether the resource is now completed
+</ResponseField>
+
+<ResponseField name="attempts" type="array">
+  Array of attempt objects if interactions were included
+</ResponseField>
+
+## Content Summary Logs
+
+Content summary logs aggregate all session data for a user and content combination.
+
+### Get Total Progress
+
+Get the total progress count for a user across all content.
+
+```bash GET /api/logger/totalcontentprogress/:user_id
+curl http://localhost:8080/api/logger/totalcontentprogress/user-uuid
+```
+
+#### Response
+
+<ResponseField name="id" type="string">
+  User UUID
+</ResponseField>
+
+<ResponseField name="progress" type="integer">
+  Total count of completed items
+</ResponseField>
+
+## Mastery Logs
+
+Mastery logs track attempts at exercises and quizzes.
+
+### List Mastery Logs
+
+Retrieve mastery logs with filtering.
+
+```bash GET /api/logger/masterylog
+curl "http://localhost:8080/api/logger/masterylog?content=content-uuid&user=user-uuid"
+```
+
+#### Query Parameters
+
+<ParamField query="content" type="string" required>
+  Filter by content UUID
+</ParamField>
+
+<ParamField query="user" type="string" required>
+  Filter by user UUID
+</ParamField>
+
+<ParamField query="complete" type="boolean">
+  Filter by completion status
+</ParamField>
+
+<ParamField query="quiz" type="boolean">
+  Filter for quiz attempts only (true) or exercise attempts only (false)
+</ParamField>
+
+<ParamField query="facility" type="string">
+  Filter by facility UUID (superuser only)
+</ParamField>
+
+<ParamField query="classroom" type="string">
+  Filter by classroom UUID
+</ParamField>
+
+<ParamField query="learner_group" type="string">
+  Filter by learner group UUID
+</ParamField>
+
+<ParamField query="page_size" type="integer">
+  Number of results per page
+</ParamField>
+
+#### Response Fields
+
+<ResponseField name="id" type="string">
+  Mastery log unique identifier
+</ResponseField>
+
+<ResponseField name="mastery_criterion" type="object">
+  The mastery criterion being applied
+</ResponseField>
+
+<ResponseField name="start_timestamp" type="string">
+  ISO 8601 timestamp when this attempt started
+</ResponseField>
+
+<ResponseField name="end_timestamp" type="string">
+  ISO 8601 timestamp of last activity
+</ResponseField>
+
+<ResponseField name="completion_timestamp" type="string">
+  ISO 8601 timestamp when mastery was achieved
+</ResponseField>
+
+<ResponseField name="complete" type="boolean">
+  Whether mastery has been achieved
+</ResponseField>
+
+<ResponseField name="correct" type="integer">
+  Number of correct answers
+</ResponseField>
+
+<ResponseField name="time_spent" type="number">
+  Total time spent in seconds
+</ResponseField>
+
+### Get Mastery Log Diff
+
+Get the difference between consecutive mastery attempts.
+
+```bash GET /api/logger/masterylog/:index/diff
+curl "http://localhost:8080/api/logger/masterylog/0/diff?content=content-uuid&user=user-uuid"
+```
+
+#### Parameters
+
+The `:index` parameter specifies which attempt to compare (0 for most recent).
+
+#### Response
+
+Returns the target attempt with:
+
+<ResponseField name="diff" type="object">
+  Object with correct and time_spent differences from previous attempt
+</ResponseField>
+
+<ResponseField name="attemptlogs" type="array">
+  Array of attempt logs with diff information
+</ResponseField>
+
+## Attempt Logs
+
+Attempt logs track individual question attempts within exercises and quizzes.
+
+### List Attempt Logs
+
+Retrieve attempt logs with filtering.
+
+```bash GET /api/logger/attemptlog
+curl "http://localhost:8080/api/logger/attemptlog?masterylog=masterylog-uuid"
+```
+
+#### Query Parameters
+
+<ParamField query="masterylog" type="string">
+  Filter by mastery log UUID
+</ParamField>
+
+<ParamField query="user" type="string">
+  Filter by user UUID
+</ParamField>
+
+<ParamField query="content" type="string">
+  Filter by content UUID
+</ParamField>
+
+<ParamField query="item" type="string">
+  Filter by question/item identifier
+</ParamField>
+
+<ParamField query="complete" type="boolean">
+  Filter by completion status
+</ParamField>
+
+<ParamField query="mastery_level" type="integer">
+  Filter by mastery level
+</ParamField>
+
+<ParamField query="page_size" type="integer">
+  Number of results per page
+</ParamField>
+
+#### Response Fields
+
+<ResponseField name="id" type="string">
+  Attempt log unique identifier
+</ResponseField>
+
+<ResponseField name="item" type="string">
+  Question/item identifier
+</ResponseField>
+
+<ResponseField name="start_timestamp" type="string">
+  ISO 8601 timestamp when attempt started
+</ResponseField>
+
+<ResponseField name="end_timestamp" type="string">
+  ISO 8601 timestamp of last update
+</ResponseField>
+
+<ResponseField name="completion_timestamp" type="string">
+  ISO 8601 timestamp when marked complete
+</ResponseField>
+
+<ResponseField name="time_spent" type="number">
+  Time spent in seconds
+</ResponseField>
+
+<ResponseField name="complete" type="boolean">
+  Whether attempt is complete
+</ResponseField>
+
+<ResponseField name="correct" type="number">
+  Correctness score (0.0 to 1.0)
+</ResponseField>
+
+<ResponseField name="hinted" type="boolean">
+  Whether hints were used
+</ResponseField>
+
+<ResponseField name="answer" type="object">
+  The submitted answer
+</ResponseField>
+
+<ResponseField name="simple_answer" type="string">
+  Simple string answer
+</ResponseField>
+
+<ResponseField name="interaction_history" type="array">
+  Array of interaction objects showing answer progression
+</ResponseField>
+
+<ResponseField name="error" type="boolean">
+  Whether an error occurred
+</ResponseField>
+
+<ResponseField name="user" type="string">
+  User UUID
+</ResponseField>
+
+<ResponseField name="masterylog" type="string">
+  Mastery log UUID
+</ResponseField>
+
+<ResponseField name="sessionlog" type="string">
+  Session log UUID
+</ResponseField>
+
+## Session Logs
+
+Content session logs track individual learning sessions. These are created via the progress tracking endpoints above. Session logs are primarily internal - the main API interaction is through the start/update endpoints.
+
+## Mastery Models
+
+Mastery models define how exercises are completed:
+
+**m_of_n**: Complete m out of the last n questions correctly
+```json
+{
+  "type": "m_of_n",
+  "m": 3,
+  "n": 5
+}
+```
+
+**num_correct_in_a_row_10**: Get 10 correct in a row
+```json
+{
+  "type": "num_correct_in_a_row_10"
+}
+```
+
+**num_correct_in_a_row_5**: Get 5 correct in a row
+```json
+{
+  "type": "num_correct_in_a_row_5"
+}
+```
+
+**num_correct_in_a_row_3**: Get 3 correct in a row
+```json
+{
+  "type": "num_correct_in_a_row_3"
+}
+```
+
+**num_correct_in_a_row_2**: Get 2 correct in a row
+```json
+{
+  "type": "num_correct_in_a_row_2"
+}
+```
+
+**do_all**: Answer all questions
+```json
+{
+  "type": "do_all"
+}
+```
+
+**quiz**: Coach-assigned quiz
+```json
+{
+  "type": "quiz",
+  "coach_assigned": true
+}
+```

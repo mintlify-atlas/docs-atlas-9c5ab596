@@ -1,0 +1,906 @@
+---
+title: Installation Guide
+description: Comprehensive installation instructions for Kolibri development environment across all platforms
+---
+
+## Overview
+
+This guide provides detailed installation instructions for setting up a Kolibri development environment. If you want to get started quickly, see the [Quick Start](/quickstart) guide instead.
+
+<Note>
+  This guide is for **developers** who want to contribute to Kolibri. If you want to **use** Kolibri (not develop it), see the [User Guide](https://kolibri.readthedocs.io/) instead.
+</Note>
+
+## System Requirements
+
+### Operating Systems
+
+- **Linux**: Ubuntu 20.04+, Debian 11+, or similar (recommended)
+- **macOS**: 10.15+ (Catalina or later)
+- **Windows**: WSL2 (Windows Subsystem for Linux) required
+
+<Warning>
+  Direct development on Windows is not supported. Windows users **must** use WSL2 with Ubuntu or another Linux distribution.
+</Warning>
+
+### Software Prerequisites
+
+- **Python**: 3.9, 3.10, 3.11, 3.12, or 3.13 (Kolibri does not support 3.14+ yet)
+- **Node.js**: 20.19.x (exact version required)
+- **Git**: 2.x with Git LFS extension
+- **Memory**: 4GB RAM minimum, 8GB+ recommended
+- **Disk Space**: 5GB+ for source code, dependencies, and content
+
+## Git and GitHub Setup
+
+### Install Git
+
+<Tabs>
+  <Tab title="Ubuntu/Debian">
+    ```bash
+    sudo apt update
+    sudo apt install git
+    ```
+  </Tab>
+
+  <Tab title="macOS">
+    ```bash
+    # Using Homebrew (recommended)
+    brew install git
+
+    # Or download from https://git-scm.com/download/mac
+    ```
+  </Tab>
+
+  <Tab title="WSL2">
+    ```bash
+    sudo apt update
+    sudo apt install git
+    ```
+  </Tab>
+</Tabs>
+
+Verify installation:
+
+```bash
+git --version
+# Should show: git version 2.x.x
+```
+
+### Install Git LFS
+
+Git Large File Storage is **required** for Kolibri development:
+
+<Tabs>
+  <Tab title="Ubuntu/Debian">
+    ```bash
+    sudo apt install git-lfs
+    git lfs install
+    ```
+  </Tab>
+
+  <Tab title="macOS">
+    ```bash
+    brew install git-lfs
+    git lfs install
+    ```
+  </Tab>
+
+  <Tab title="WSL2">
+    ```bash
+    sudo apt install git-lfs
+    git lfs install
+    ```
+  </Tab>
+</Tabs>
+
+Verify Git LFS:
+
+```bash
+git lfs version
+# Should show: git-lfs/2.x.x
+```
+
+### Configure Git
+
+Set up your Git identity:
+
+```bash
+git config --global user.name "Your Name"
+git config --global user.email "your.email@example.com"
+```
+
+<Tip>
+  [Register your SSH keys](https://docs.github.com/en/authentication/connecting-to-github-with-ssh) on GitHub to avoid repeatedly entering your password.
+</Tip>
+
+### Fork and Clone Kolibri
+
+1. **Fork the repository**: Go to [github.com/learningequality/kolibri](https://github.com/learningequality/kolibri) and click "Fork"
+
+2. **Clone your fork**:
+
+```bash
+# Replace $USERNAME with your GitHub username
+git clone git@github.com:$USERNAME/kolibri.git
+cd kolibri
+```
+
+3. **Initialize Git LFS**:
+
+```bash
+git lfs install
+```
+
+4. **Configure git blame** to ignore formatting commits:
+
+```bash
+git config blame.ignoreRevsFile .git-blame-ignore-revs
+```
+
+5. **Add upstream remote**:
+
+```bash
+git remote add upstream git@github.com:learningequality/kolibri.git
+git fetch --all
+git checkout -t upstream/develop
+```
+
+## Python Installation
+
+### Why Use pyenv?
+
+We **strongly recommend** using [pyenv](https://github.com/pyenv/pyenv) to manage Python versions:
+
+- Install and switch between multiple Python versions easily
+- Avoid modifying your system Python (important!)
+- Works seamlessly with virtual environments via pyenv-virtualenv
+
+<Warning>
+  Never modify or use `sudo pip` with your system's built-in Python. This can break your operating system.
+</Warning>
+
+### Install pyenv
+
+<Tabs>
+  <Tab title="Ubuntu/Debian/WSL2">
+    ```bash
+    # Install dependencies
+    sudo apt update
+    sudo apt install -y build-essential libssl-dev zlib1g-dev \
+      libbz2-dev libreadline-dev libsqlite3-dev curl \
+      libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev \
+      libffi-dev liblzma-dev
+
+    # Install pyenv
+    curl https://pyenv.run | bash
+
+    # Add to ~/.bashrc (or ~/.zshrc for zsh)
+    echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bashrc
+    echo 'command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bashrc
+    echo 'eval "$(pyenv init -)"' >> ~/.bashrc
+
+    # Reload shell
+    exec $SHELL
+    ```
+  </Tab>
+
+  <Tab title="macOS">
+    ```bash
+    # Install pyenv via Homebrew
+    brew update
+    brew install pyenv
+
+    # Add to ~/.zshrc (or ~/.bash_profile for bash)
+    echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.zshrc
+    echo 'command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.zshrc
+    echo 'eval "$(pyenv init -)"' >> ~/.zshrc
+
+    # Reload shell
+    exec $SHELL
+    ```
+  </Tab>
+</Tabs>
+
+Verify installation:
+
+```bash
+pyenv --version
+# Should show: pyenv 2.x.x
+```
+
+### Install Python with pyenv
+
+```bash
+# List available Python versions
+pyenv install --list | grep "^  3\.(9|10|11|12|13)\."
+
+# Install a compatible version (e.g., 3.9.9)
+pyenv install 3.9.9
+
+# Set it as global default (optional)
+pyenv global 3.9.9
+
+# Verify
+python --version
+# Should show: Python 3.9.9
+```
+
+<Note>
+  You can install multiple Python versions and switch between them:
+  ```bash
+  pyenv install 3.10.11
+  pyenv install 3.11.4
+  pyenv versions  # List installed versions
+  pyenv local 3.10.11  # Use 3.10.11 in current directory
+  ```
+</Note>
+
+### Alternative: System Package Manager
+
+If you prefer not to use pyenv:
+
+<Tabs>
+  <Tab title="Ubuntu/Debian">
+    ```bash
+    sudo apt update
+    sudo apt install python3.9 python3.9-venv python3.9-dev python3-pip
+    ```
+  </Tab>
+
+  <Tab title="macOS">
+    ```bash
+    brew install python@3.9
+    ```
+  </Tab>
+</Tabs>
+
+## Python Virtual Environment
+
+Virtual environments isolate your project dependencies from system packages.
+
+### Method 1: pyenv-virtualenv (Recommended)
+
+Install pyenv-virtualenv:
+
+<Tabs>
+  <Tab title="Ubuntu/Debian/WSL2">
+    ```bash
+    # Install via git
+    git clone https://github.com/pyenv/pyenv-virtualenv.git \
+      $(pyenv root)/plugins/pyenv-virtualenv
+
+    # Add to ~/.bashrc
+    echo 'eval "$(pyenv virtualenv-init -)"' >> ~/.bashrc
+    exec $SHELL
+    ```
+  </Tab>
+
+  <Tab title="macOS">
+    ```bash
+    brew install pyenv-virtualenv
+
+    # Add to ~/.zshrc
+    echo 'eval "$(pyenv virtualenv-init -)"' >> ~/.zshrc
+    exec $SHELL
+    ```
+  </Tab>
+</Tabs>
+
+Create and activate a virtual environment:
+
+```bash
+# Create virtualenv named 'kolibri-py3.9'
+pyenv virtualenv 3.9.9 kolibri-py3.9
+
+# Activate it
+pyenv activate kolibri-py3.9
+
+# Your prompt should now show: (kolibri-py3.9)
+
+# To deactivate later
+pyenv deactivate
+```
+
+<Tip>
+  Set automatic activation when entering the kolibri directory:
+  ```bash
+  cd kolibri/
+  pyenv local kolibri-py3.9
+  # Now the virtualenv activates automatically when you cd into this directory
+  ```
+</Tip>
+
+### Method 2: Python venv
+
+Using built-in `venv` module:
+
+```bash
+# Create virtual environment
+python3 -m venv kolibri-env
+
+# Activate it
+source kolibri-env/bin/activate  # Linux/macOS
+# kolibri-env\Scripts\activate   # Windows (not recommended)
+
+# Deactivate when done
+deactivate
+```
+
+### Method 3: virtualenvwrapper
+
+For users who prefer virtualenvwrapper:
+
+```bash
+# Install virtualenvwrapper
+pip install virtualenvwrapper
+
+# Add to ~/.bashrc
+export WORKON_HOME=$HOME/.virtualenvs
+source /usr/local/bin/virtualenvwrapper.sh
+
+# Create and activate environment
+mkvirtualenv kolibri-py3.9
+workon kolibri-py3.9
+```
+
+## Environment Variables
+
+Kolibri requires specific environment variables for development.
+
+### Required: KOLIBRI_RUN_MODE
+
+This variable **must** be set to a non-empty string:
+
+```bash
+export KOLIBRI_RUN_MODE="dev"
+```
+
+Why it's required:
+- Filters your development work out of usage statistics
+- Sent to Learning Equality's pingback server
+- Enables special testing behaviors for certain values
+
+Make it permanent by adding to your shell configuration:
+
+<Tabs>
+  <Tab title="Bash">
+    ```bash
+    echo 'export KOLIBRI_RUN_MODE="dev"' >> ~/.bashrc
+    source ~/.bashrc
+    ```
+  </Tab>
+
+  <Tab title="Zsh">
+    ```bash
+    echo 'export KOLIBRI_RUN_MODE="dev"' >> ~/.zshrc
+    source ~/.zshrc
+    ```
+  </Tab>
+
+  <Tab title="Fish">
+    ```bash
+    echo 'set -x KOLIBRI_RUN_MODE "dev"' >> ~/.config/fish/config.fish
+    source ~/.config/fish/config.fish
+    ```
+  </Tab>
+</Tabs>
+
+### Optional: KOLIBRI_HOME
+
+Specifies where Kolibri stores content, databases, and logs:
+
+```bash
+export KOLIBRI_HOME="$HOME/.kolibri-dev"
+```
+
+Useful for:
+- Running multiple Kolibri instances simultaneously
+- Isolating development data from production installations
+- Multi-agent or multi-worktree development setups
+
+See `docs/howtos/multi_agent_setup.md` in the repository for advanced multi-instance setups.
+
+## Install Python Dependencies
+
+<Warning>
+  Ensure your virtual environment is activated before installing dependencies!
+</Warning>
+
+From the `kolibri/` directory:
+
+```bash
+# Core dependencies
+pip install -r requirements.txt --upgrade
+
+# Development dependencies (required)
+pip install -r requirements/dev.txt --upgrade
+
+# Install Kolibri in editable mode
+pip install -e .
+```
+
+### Optional Dependencies
+
+```bash
+# Testing dependencies
+pip install -r requirements/test.txt --upgrade
+
+# Documentation building
+pip install -r requirements/docs.txt --upgrade
+
+# PostgreSQL support (optional, SQLite is default)
+pip install -r requirements/postgres.txt --upgrade
+```
+
+### What Gets Installed
+
+Key dependencies from `requirements/base.txt`:
+
+```python
+django==3.2.25              # Web framework
+djangorestframework==3.14.0  # REST API
+morango==0.8.6               # Sync framework
+le-utils==0.2.13             # Learning Equality utilities
+cheroot==10.0.1              # WSGI server
+requests==2.27.1             # HTTP library
+django-filter==21.1          # API filtering
+```
+
+Key development dependencies:
+
+```python
+pre-commit     # Git hooks for code quality
+tox            # Multi-environment testing
+ipdb           # Enhanced debugger
+nodeenv        # Node.js environment manager
+```
+
+## Install Node.js and JavaScript Dependencies
+
+### Install Node.js via nodeenv
+
+The `nodeenv` package (installed with Python dependencies) allows you to install Node.js in your Python virtual environment:
+
+```bash
+# Ensure Python virtualenv is active
+pyenv activate kolibri-py3.9  # or your virtualenv name
+
+# Install Node.js 20.19.0
+nodeenv -p --node=20.19.0
+
+# Verify installation
+node --version
+# Should show: v20.19.0
+```
+
+The `-p` flag integrates Node.js into your current Python virtualenv.
+
+### Install pnpm
+
+pnpm is Kolibri's JavaScript package manager:
+
+```bash
+npm install -g pnpm
+
+# Verify installation
+pnpm --version
+# Should show: 10.4.1 or similar
+```
+
+### Install JavaScript Dependencies
+
+```bash
+# From the kolibri/ directory
+pnpm install
+```
+
+This installs:
+
+```javascript
+// Key frontend dependencies (from package.json)
+{
+  "vue": "2.7.16",
+  "vuex": "...",
+  "webpack": "^5.104.0",
+  "jest": "^30.2.0",
+  "@testing-library/vue": "^5",
+  "babel-jest": "^30.2.0"
+}
+```
+
+The first `pnpm install` may take 5-10 minutes to download and install all packages.
+
+## Configure Development Tools
+
+### Pre-commit Hooks (Strongly Recommended)
+
+Pre-commit hooks enforce code quality automatically:
+
+```bash
+pre-commit install
+```
+
+What this does:
+- Runs Black (Python formatter) on every commit
+- Runs Prettier (JavaScript formatter) on every commit
+- Runs linters: Flake8, ESLint, Stylelint
+- Checks for common issues (trailing whitespace, merge conflicts, etc.)
+
+<Note>
+  Pre-commit checks are **identical** to CI checks on GitHub PRs. Using them locally prevents failed CI builds.
+</Note>
+
+#### Test Pre-commit
+
+```bash
+# Run all checks on all files
+pre-commit run --all-files
+```
+
+First run may take a few minutes as it sets up environments.
+
+#### Pre-commit Workflow
+
+When you commit:
+
+```bash
+git add my_file.py
+git commit -m "Add new feature"
+# Pre-commit runs automatically...
+# If checks fail, files are auto-fixed
+# Review changes, then:
+git add my_file.py  # Stage auto-fixes
+git commit -m "Add new feature"  # Commit succeeds
+```
+
+### Editor Configuration
+
+Kolibri includes an `.editorconfig` file for consistent formatting:
+
+- **VS Code**: Install "EditorConfig for VS Code" extension
+- **PyCharm/IntelliJ**: Built-in support, enable in settings
+- **Sublime Text**: Install "EditorConfig" package
+- **Vim/Neovim**: Install `editorconfig-vim` plugin
+
+Check [editorconfig.org](http://editorconfig.org/#download) for your editor.
+
+### Vue.js Developer Tools
+
+Install browser extensions for debugging:
+
+- **Chrome/Edge**: [Vue.js devtools (Legacy)](https://chrome.google.com/webstore/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
+- **Firefox**: [Vue.js devtools (Legacy)](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
+
+<Warning>
+  Install the **Legacy** version for Vue 2.x (not the latest version which is for Vue 3).
+</Warning>
+
+## Initialize the Database
+
+Create the SQLite database and run migrations:
+
+```bash
+kolibri manage migrate
+```
+
+Expected output:
+
+```
+Running migrations:
+  Applying contenttypes.0001_initial... OK
+  Applying auth.0001_initial... OK
+  Applying kolibriauth.0001_initial... OK
+  Applying kolibriauth.0002_facilitydataset... OK
+  ...
+  Applying logger.0015_auto_20230615_2045... OK
+```
+
+The database file is created at:
+- Default: `~/.kolibri/db.sqlite3`
+- If `KOLIBRI_HOME` is set: `$KOLIBRI_HOME/db.sqlite3`
+
+## Running Kolibri
+
+### Development Server
+
+The easiest way to run Kolibri for development:
+
+```bash
+pnpm run devserver
+```
+
+This command:
+1. Starts Django development server on `http://127.0.0.1:8000/`
+2. Runs webpack in watch mode (auto-rebuilds on file changes)
+3. Enables hot module replacement for faster development
+
+First startup takes several minutes to build all frontend assets.
+
+### Alternative: Hot Reload Mode
+
+```bash
+pnpm run devserver-hot
+```
+
+Faster rebuilds, but:
+- Breaks right-to-left (RTL) language support
+- May have issues with some CSS changes
+
+### Alternative: Separate Servers
+
+Run Django and webpack separately:
+
+**Terminal 1 (Django):**
+```bash
+pnpm run python-devserver
+```
+
+**Terminal 2 (Webpack):**
+```bash
+pnpm run watch
+```
+
+### Production Mode (Local)
+
+Build assets once and run production server:
+
+```bash
+# Build all frontend assets
+pnpm run build
+
+# Start production server
+kolibri start
+```
+
+Server runs at `http://127.0.0.1:8080/` (note different port).
+
+Stop the server:
+
+```bash
+kolibri stop
+```
+
+## Platform-Specific Notes
+
+### Windows (WSL2)
+
+<Steps>
+  <Step title="Install WSL2">
+    ```powershell
+    # In PowerShell (as Administrator)
+    wsl --install -d Ubuntu
+    ```
+  </Step>
+
+  <Step title="Update WSL">
+    ```powershell
+    wsl --update
+    wsl --shutdown
+    ```
+  </Step>
+
+  <Step title="Launch Ubuntu">
+    Open "Ubuntu" from Start menu, complete setup.
+  </Step>
+
+  <Step title="Follow Linux instructions">
+    Use the Ubuntu/Debian installation steps above within WSL2.
+  </Step>
+</Steps>
+
+**Tips:**
+- Store code in WSL filesystem (`~/kolibri`), not Windows (`/mnt/c/...`) for better performance
+- Use Windows Terminal for better experience
+- Access server from Windows at `http://localhost:8000/`
+
+### macOS
+
+**Install Xcode Command Line Tools:**
+
+```bash
+xcode-select --install
+```
+
+Required for compiling Python packages with C extensions.
+
+**Use Homebrew for dependencies:**
+
+```bash
+# Install Homebrew if not present
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Install build dependencies
+brew install openssl readline sqlite3 xz zlib
+```
+
+### Linux Notes
+
+**Build dependencies for Python:**
+
+```bash
+sudo apt install build-essential libssl-dev zlib1g-dev \
+  libbz2-dev libreadline-dev libsqlite3-dev curl \
+  libncursesw5-dev xz-utils tk-dev libxml2-dev \
+  libxmlsec1-dev libffi-dev liblzma-dev
+```
+
+## Docker-Based Development
+
+Developers familiar with Docker can run Kolibri without installing Python/Node.js locally.
+
+### Build Development Container
+
+```bash
+# One-time: build base image
+make docker-build-base
+
+# Start devserver in container
+make docker-devserver
+```
+
+Access at `http://localhost:8000/`
+
+### Build Distributable Files
+
+```bash
+# Generate .whl and .pex files in dist/
+make docker-whl
+```
+
+See `docker/readme.md` for more Docker commands and configuration.
+
+## Verify Installation
+
+Run these commands to confirm everything works:
+
+<Steps>
+  <Step title="Check Python">
+    ```bash
+    python --version
+    # Python 3.9.9 (or your version)
+
+    pip list | grep -i django
+    # Django 3.2.25
+    ```
+  </Step>
+
+  <Step title="Check Node.js">
+    ```bash
+    node --version
+    # v20.19.0
+
+    pnpm --version
+    # 10.4.1
+    ```
+  </Step>
+
+  <Step title="Check Kolibri">
+    ```bash
+    kolibri --version
+    # 0.20.0 (or current version)
+    ```
+  </Step>
+
+  <Step title="Run Tests">
+    ```bash
+    # Quick Python test
+    pytest kolibri/core/auth/test/ -k test_admin --maxfail=1
+
+    # Quick JavaScript test
+    pnpm run test-jest -- --testPathPattern=KButton --maxWorkers=1
+    ```
+  </Step>
+</Steps>
+
+If all checks pass, you're ready to develop!
+
+## Troubleshooting
+
+### Python Issues
+
+**"python: command not found"**
+
+Try `python3` instead, or ensure pyenv is in your PATH.
+
+**"No module named 'kolibri'"**
+
+Virtual environment not activated, or `pip install -e .` not run.
+
+```bash
+pyenv activate kolibri-py3.9
+pip install -e .
+```
+
+**Permission denied errors**
+
+Never use `sudo pip`. Ensure virtual environment is activated.
+
+### Node.js Issues
+
+**"node: command not found"**
+
+Nodeenv not installed or not in PATH.
+
+```bash
+# Reinstall nodeenv
+nodeenv -p --node=20.19.0
+```
+
+**"pnpm: command not found"**
+
+```bash
+npm install -g pnpm
+```
+
+**"Cannot find module" errors**
+
+```bash
+# Reinstall JavaScript dependencies
+rm -rf node_modules
+pnpm install
+```
+
+### Build Issues
+
+**Webpack build fails or hangs**
+
+Increase Node.js memory:
+
+```bash
+export NODE_OPTIONS="--max-old-space-size=4096"
+pnpm run build
+```
+
+**Pre-commit hooks fail**
+
+Update pre-commit:
+
+```bash
+pip install --upgrade pre-commit
+pre-commit clean
+pre-commit install
+```
+
+### Database Issues
+
+**Migration conflicts**
+
+Reset development database:
+
+```bash
+# Find KOLIBRI_HOME
+kolibri manage shell -c "from kolibri.utils.conf import KOLIBRI_HOME; print(KOLIBRI_HOME)"
+
+# Backup if needed, then remove
+rm $KOLIBRI_HOME/db.sqlite3
+
+# Recreate
+kolibri manage migrate
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Fast-track setup guide
+  </Card>
+  <Card title="Contributing" icon="code" href="/contributing/overview">
+    Learn the development workflow
+  </Card>
+  <Card title="Testing" icon="vial" href="/guides/testing">
+    Write and run tests
+  </Card>
+  <Card title="Architecture" icon="sitemap" href="/concepts/architecture">
+    Understand how Kolibri works
+  </Card>
+</CardGroup>
+
+## Additional Resources
+
+- **Full developer docs**: [kolibri-dev.readthedocs.io](http://kolibri-dev.readthedocs.io/)
+- **Repository structure**: See `docs/backend_architecture/plugins.rst`
+- **Frontend architecture**: See `docs/frontend_architecture/`
+- **Testing guide**: See `docs/testing.rst`
+- **i18n guide**: See `docs/i18n.rst`
+- **Code quality**: See `docs/code_quality.rst`

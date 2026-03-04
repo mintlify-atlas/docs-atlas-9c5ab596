@@ -1,0 +1,280 @@
+---
+title: "Exams & Quizzes"
+description: "API endpoints for creating and managing exams (quizzes) and exam assignments"
+---
+
+## Exams
+
+### List Exams
+
+Retrieve all exams (quizzes) in a classroom or facility.
+
+```bash GET /api/exams/exam
+curl "http://localhost:8080/api/exams/exam?collection=classroom-uuid"
+```
+
+#### Query Parameters
+
+<ParamField query="collection" type="string">
+  Filter by collection (classroom) UUID
+</ParamField>
+
+#### Response Fields
+
+<ResponseField name="id" type="string">
+  Exam unique identifier (UUID for published exams, integer for drafts)
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  Exam title
+</ResponseField>
+
+<ResponseField name="question_sources" type="array">
+  Array of question source objects defining which exercises to pull from
+</ResponseField>
+
+<ResponseField name="seed" type="integer">
+  Random seed for question selection
+</ResponseField>
+
+<ResponseField name="question_count" type="integer">
+  Total number of questions in the exam
+</ResponseField>
+
+<ResponseField name="active" type="boolean">
+  Whether the exam is currently active
+</ResponseField>
+
+<ResponseField name="archive" type="boolean">
+  Whether the exam is archived
+</ResponseField>
+
+<ResponseField name="collection" type="string">
+  UUID of the classroom/collection
+</ResponseField>
+
+<ResponseField name="creator" type="string">
+  UUID of the user who created the exam
+</ResponseField>
+
+<ResponseField name="date_created" type="string">
+  ISO 8601 timestamp of creation
+</ResponseField>
+
+<ResponseField name="date_activated" type="string">
+  ISO 8601 timestamp when exam was activated
+</ResponseField>
+
+<ResponseField name="date_archived" type="string">
+  ISO 8601 timestamp when exam was archived
+</ResponseField>
+
+<ResponseField name="learners_see_fixed_order" type="boolean">
+  Whether learners see questions in a fixed order
+</ResponseField>
+
+<ResponseField name="instant_report_visibility" type="boolean">
+  Whether learners can see their results immediately
+</ResponseField>
+
+<ResponseField name="draft" type="boolean">
+  Whether this is a draft exam (not yet published)
+</ResponseField>
+
+<ResponseField name="assignments" type="array">
+  Array of collection UUIDs (groups) assigned to
+</ResponseField>
+
+<ResponseField name="learner_ids" type="array">
+  Array of individual learner UUIDs assigned to
+</ResponseField>
+
+<ResponseField name="data_model_version" type="integer">
+  Version of the exam data model
+</ResponseField>
+
+### Get Exam
+
+Retrieve details of a specific exam.
+
+```bash GET /api/exams/exam/:id
+curl http://localhost:8080/api/exams/exam/exam-uuid-here
+```
+
+### Create Exam
+
+Create a new exam (initially as a draft).
+
+```bash POST /api/exams/exam
+curl -X POST http://localhost:8080/api/exams/exam \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Mathematics Quiz",
+    "question_count": 10,
+    "question_sources": [
+      {
+        "exercise_id": "exercise-node-uuid",
+        "number_of_questions": 5,
+        "title": "Addition"
+      },
+      {
+        "exercise_id": "exercise-node-uuid-2",
+        "number_of_questions": 5,
+        "title": "Subtraction"
+      }
+    ],
+    "seed": 12345,
+    "learners_see_fixed_order": false,
+    "instant_report_visibility": true,
+    "collection": "classroom-uuid",
+    "assignments": ["group-uuid"],
+    "learner_ids": ["learner-uuid"]
+  }'
+```
+
+#### Request Parameters
+
+<ParamField body="title" type="string" required>
+  Exam title
+</ParamField>
+
+<ParamField body="question_count" type="integer" required>
+  Total number of questions in the exam
+</ParamField>
+
+<ParamField body="question_sources" type="array" required>
+  Array of question source objects, each with exercise_id, number_of_questions, and title
+</ParamField>
+
+<ParamField body="seed" type="integer" required>
+  Random seed for reproducible question selection
+</ParamField>
+
+<ParamField body="collection" type="string" required>
+  UUID of the classroom this exam belongs to
+</ParamField>
+
+<ParamField body="learners_see_fixed_order" type="boolean">
+  Whether to show questions in fixed order (default: false)
+</ParamField>
+
+<ParamField body="instant_report_visibility" type="boolean">
+  Whether learners see results immediately (default: true)
+</ParamField>
+
+<ParamField body="assignments" type="array">
+  Array of collection (group) UUIDs to assign this exam to
+</ParamField>
+
+<ParamField body="learner_ids" type="array">
+  Array of individual learner UUIDs to assign this exam to
+</ParamField>
+
+### Update Exam
+
+Update an existing exam or draft.
+
+```bash PATCH /api/exams/exam/:id
+curl -X PATCH http://localhost:8080/api/exams/exam/exam-uuid-here \
+  -H "Content-Type: application/json" \
+  -d '{
+    "active": true,
+    "title": "Updated Quiz Title"
+  }'
+```
+
+#### Common Update Operations
+
+**Activate an exam (publish from draft):**
+```json
+{
+  "active": true
+}
+```
+
+**Deactivate an exam:**
+```json
+{
+  "active": false
+}
+```
+
+**Archive an exam:**
+```json
+{
+  "archive": true
+}
+```
+
+### Delete Exam
+
+Delete an exam or draft.
+
+```bash DELETE /api/exams/exam/:id
+curl -X DELETE http://localhost:8080/api/exams/exam/exam-uuid-here
+```
+
+### Get Exam Sizes
+
+Calculate the total size of all resources (exercises) in exams.
+
+```bash GET /api/exams/exam/size
+curl "http://localhost:8080/api/exams/exam/size?collection=classroom-uuid"
+```
+
+#### Response
+
+Returns an array of objects with exam IDs as keys and sizes in bytes as values:
+
+```json
+[
+  {
+    "exam-uuid-1": 10485760
+  },
+  {
+    "exam-uuid-2": 5242880
+  }
+]
+```
+
+## Question Sources
+
+Question sources define which exercises to pull questions from. Each source object contains:
+
+<ResponseField name="exercise_id" type="string">
+  UUID of the exercise content node
+</ResponseField>
+
+<ResponseField name="number_of_questions" type="integer">
+  How many questions to include from this exercise
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  Title of the exercise
+</ResponseField>
+
+<ResponseField name="counter_in_exercise" type="integer">
+  Question counter within the exercise
+</ResponseField>
+
+## Exam Lifecycle
+
+Exams go through several states:
+
+1. **Draft**: Initial state when created (`draft: true`). Can be edited freely.
+2. **Active**: Published and available to learners (`active: true, draft: false`).
+3. **Inactive**: Published but not currently available (`active: false, archive: false`).
+4. **Archived**: Closed and marked complete (`archive: true`).
+
+When an exam is activated (`active: true`), it transitions from draft to published exam and receives a UUID identifier.
+
+When an exam is archived, all associated MasteryLog records are marked as complete.
+
+## Exam Assignments
+
+Exam assignments work the same way as lesson assignments:
+
+- **assignments**: Array of collection (group) UUIDs
+- **learner_ids**: Array of individual learner UUIDs
+
+These fields automatically create ExamAssignment records when the exam is created or updated.

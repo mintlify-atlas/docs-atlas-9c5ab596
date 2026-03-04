@@ -1,122 +1,137 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Kolibri Learning Platform",
+  "theme": "almond",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#f7ce22",
+    "light": "#7c5c25",
+    "dark": "#f7ce22"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "https://media.brand.dev/c8e58fe0-d815-4e60-8585-093236a781c2.jpg",
+  "logo": {
+    "light": "https://media.brand.dev/93057903-8538-4667-82e8-57aaf5ed9423.svg",
+    "dark": "https://media.brand.dev/93057903-8538-4667-82e8-57aaf5ed9423.svg"
+  },
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/learningequality/kolibri"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/learningequality/kolibri",
+      "website": "https://learningequality.org"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Get Started",
             "pages": [
-              "index",
+              "introduction",
               "quickstart",
-              "development"
+              "installation"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Core Concepts",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "concepts/architecture",
+              "concepts/plugins",
+              "concepts/content-management",
+              "concepts/user-roles"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Developer Guides",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "guides/development-setup",
+              "guides/frontend-development",
+              "guides/backend-development",
+              "guides/plugin-development",
+              "guides/testing",
+              "guides/internationalization"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "Features",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "features/learn",
+              "features/coach",
+              "features/facility-management",
+              "features/device-management",
+              "features/content-library"
+            ]
+          },
+          {
+            "group": "Deployment",
+            "pages": [
+              "deployment/overview",
+              "deployment/production",
+              "deployment/android",
+              "deployment/offline-setup"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "API Reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Core APIs",
             "pages": [
-              "api-reference/introduction"
+              "api/overview",
+              "api/authentication",
+              "api/permissions"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Resources",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api/auth",
+              "api/content",
+              "api/lessons",
+              "api/exams",
+              "api/facility",
+              "api/device",
+              "api/logger"
+            ]
+          },
+          {
+            "group": "Frontend",
+            "pages": [
+              "api/frontend/core-api",
+              "api/frontend/composables",
+              "api/frontend/components"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Contributing",
+        "groups": [
+          {
+            "group": "Getting Involved",
+            "pages": [
+              "contributing/overview",
+              "contributing/code-of-conduct",
+              "contributing/development-workflow"
+            ]
+          },
+          {
+            "group": "Best Practices",
+            "pages": [
+              "contributing/code-quality",
+              "contributing/code-review",
+              "contributing/testing-guidelines"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

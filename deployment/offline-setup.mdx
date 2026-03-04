@@ -1,0 +1,708 @@
+---
+title: Offline Setup
+description: Deploy Kolibri in network-free environments with content pre-loading and offline operation
+---
+
+Kolibri is designed for offline-first deployment, making it ideal for environments with limited or no internet connectivity. This guide covers content pre-loading, offline installation, and network-free operation strategies.
+
+## Offline Design Philosophy
+
+Kolibri's architecture supports fully offline deployment:
+
+- **Bundled dependencies**: `kolibri-static` package includes all Python dependencies
+- **Local content storage**: All educational content stored locally
+- **SQLite database**: No external database server required
+- **Offline sync**: Peer-to-peer sync without internet
+- **Update independence**: No required connection to update servers
+
+<Note>
+  While Kolibri can operate entirely offline, an initial internet connection may be needed to download content. This guide shows how to pre-load content to eliminate even this requirement.
+</Note>
+
+## Offline Installation Methods
+
+### 1. Using Bundled Installer
+
+Platform-specific installers include all dependencies:
+
+<Tabs>
+  <Tab title="Windows">
+    Download the Windows installer (`.exe`) which bundles Python and all dependencies:
+
+    ```bash
+    # No internet required after download
+    kolibri-installer-v0.17.0.exe
+    ```
+
+    Transfer via USB drive or local network to target machines.
+  </Tab>
+
+  <Tab title="Debian/Ubuntu">
+    Download the `.deb` package with bundled dependencies:
+
+    ```bash
+    # Install offline
+    sudo dpkg -i kolibri_0.17.0-0ubuntu1_all.deb
+
+    # If dependencies are missing, install them first
+    sudo apt-get install -f
+    ```
+  </Tab>
+
+  <Tab title="PEX File">
+    Portable Python executable with all dependencies:
+
+    ```bash
+    # Download once
+    wget https://learningequality.org/r/kolibri-pex-latest
+
+    # Run anywhere with Python 3.6+
+    python3 kolibri-0.17.0.pex start
+    ```
+
+    No installation required - just copy the `.pex` file.
+  </Tab>
+</Tabs>
+
+### 2. Using kolibri-static Package
+
+Install from the static PyPI package:
+
+```bash
+# Download on a machine with internet
+pip download kolibri-static==0.17.0 -d ./kolibri-packages
+
+# Transfer ./kolibri-packages to offline machine
+
+# Install offline
+pip install --no-index --find-links=./kolibri-packages kolibri-static
+```
+
+### 3. Building Custom Installer
+
+Create a custom distribution with pre-loaded content:
+
+<Steps>
+  <Step title="Build Distribution">
+    ```bash
+    # On build machine with internet
+    make dist
+    ```
+
+    This creates wheel and source distributions in `dist/`.
+  </Step>
+
+  <Step title="Create PEX with Content">
+    ```bash
+    # Build PEX file
+    make pex
+
+    # PEX files created in dist/
+    ls dist/*.pex
+    ```
+  </Step>
+
+  <Step title="Pre-load Content">
+    See [Content Pre-loading](#content-pre-loading) section below.
+  </Step>
+</Steps>
+
+## Content Pre-loading
+
+Pre-loading content eliminates the need for internet connectivity on target devices.
+
+### Exporting Content
+
+On a machine with internet access:
+
+<Steps>
+  <Step title="Import Content">
+    ```bash
+    # Import channel metadata
+    kolibri manage importchannel network <channel_id>
+
+    # Import all content for channel
+    kolibri manage importcontent network <channel_id>
+    ```
+
+    Replace `<channel_id>` with the actual channel ID (32-character hex string).
+  </Step>
+
+  <Step title="Export Channel">
+    ```bash
+    # Export channel metadata
+    kolibri manage exportchannel <channel_id> /path/to/export
+
+    # Export content files
+    kolibri manage exportcontent <channel_id> /path/to/export
+    ```
+  </Step>
+
+  <Step title="Package for Distribution">
+    ```bash
+    # Create archive
+    tar -czf kolibri-content-<channel_id>.tar.gz /path/to/export
+
+    # Or zip for Windows
+    zip -r kolibri-content-<channel_id>.zip /path/to/export
+    ```
+  </Step>
+</Steps>
+
+### Importing Pre-loaded Content
+
+On offline target machines:
+
+<Steps>
+  <Step title="Extract Content">
+    ```bash
+    # Extract archive
+    tar -xzf kolibri-content-<channel_id>.tar.gz -C /path/to/import
+    ```
+  </Step>
+
+  <Step title="Import to Kolibri">
+    ```bash
+    # Import channel from local directory
+    kolibri manage importchannel disk <channel_id> /path/to/import
+
+    # Import content from local directory
+    kolibri manage importcontent disk <channel_id> /path/to/import
+    ```
+  </Step>
+</Steps>
+
+### Direct Content Directory Copy
+
+For bulk deployment, copy content directly:
+
+```bash
+# On source machine, locate content
+source_content="$KOLIBRI_HOME/content"
+
+# Copy to USB or network location
+cp -r "$source_content" /media/usb/kolibri-content/
+
+# On target machines, copy to KOLIBRI_HOME
+cp -r /media/usb/kolibri-content/* "$KOLIBRI_HOME/content/"
+```
+
+<Warning>
+  Stop Kolibri before copying content directories directly to avoid database corruption:
+  ```bash
+  kolibri stop
+  # ... copy content ...
+  kolibri start
+  ```
+</Warning>
+
+## Pre-seeding Database
+
+Kolibri includes a pre-seed mechanism for distributing pre-configured databases:
+
+```bash
+# From Makefile
+make preseeddb
+```
+
+This runs `build_tools/preseed_home.sh` to create a template `KOLIBRI_HOME` with:
+- Provisioned facility
+- Pre-imported content
+- Default users
+- Configuration settings
+
+### Creating a Pre-seeded Distribution
+
+<Steps>
+  <Step title="Configure Template Instance">
+    ```bash
+    # Set up a template KOLIBRI_HOME
+    export KOLIBRI_HOME=/tmp/kolibri-template
+    kolibri start
+
+    # Configure as desired:
+    # - Import content
+    # - Create facility
+    # - Set up users
+    # - Configure settings
+
+    kolibri stop
+    ```
+  </Step>
+
+  <Step title="Package Template">
+    ```bash
+    # Create distributable archive
+    tar -czf kolibri-home-template.tar.gz /tmp/kolibri-template
+    ```
+  </Step>
+
+  <Step title="Deploy to Target Machines">
+    ```bash
+    # Extract to user's KOLIBRI_HOME location
+    mkdir -p ~/.kolibri
+    tar -xzf kolibri-home-template.tar.gz -C ~/.kolibri --strip-components=2
+    ```
+  </Step>
+</Steps>
+
+## Docker Offline Deployment
+
+Deploy Kolibri in Docker without internet access:
+
+### Building Offline Docker Image
+
+<Steps>
+  <Step title="Build Image with Internet">
+    ```bash
+    # Build demoserver image
+    make docker-demoserver
+
+    # Or build from source
+    docker build -f docker/dev.dockerfile -t kolibri:offline .
+    ```
+  </Step>
+
+  <Step title="Export Image">
+    ```bash
+    # Save image to file
+    docker save kolibri:offline | gzip > kolibri-offline.tar.gz
+    ```
+  </Step>
+
+  <Step title="Import on Offline Machine">
+    ```bash
+    # Load image from file
+    docker load < kolibri-offline.tar.gz
+    ```
+  </Step>
+</Steps>
+
+### Docker with Pre-loaded Content
+
+Mount pre-loaded content into the container:
+
+```bash
+# Prepare content on host
+mkdir -p ./docker/mnt/content
+# ... copy content to ./docker/mnt/content ...
+
+# Run with mounted content
+docker run -d \
+  -v $(pwd)/docker/mnt:/docker/mnt \
+  -p 8080:8080 \
+  -e KOLIBRI_HOME=/kolibrihome \
+  kolibri:offline
+```
+
+### Docker Environment Configuration
+
+The Docker entrypoint supports multiple deployment scenarios:
+
+```bash
+# OPTION A: Run from URL (requires internet)
+export KOLIBRI_PEX_URL=https://example.com/kolibri.pex
+
+# OPTION B: Run from mounted volume (offline)
+export DOCKERMNT_PEX_PATH=/docker/mnt/kolibri.pex
+
+# OPTION C: Run from source code (development)
+# No env vars needed - runs from /kolibri source
+
+# Common environment variables
+export KOLIBRI_HOME=/kolibrihome
+export KOLIBRI_HTTP_PORT=8080
+export KOLIBRI_LANG=en
+
+# Auto-provision facility (optional)
+export KOLIBRI_PROVISIONDEVICE_FACILITY="My Facility"
+export KOLIBRI_PROVISIONDEVICE_PRESET=formal
+export KOLIBRI_PROVISIONDEVICE_SUPERUSERNAME=admin
+export KOLIBRI_PROVISIONDEVICE_SUPERUSERPASSWORD=admin123
+
+# Pre-import channels (optional)
+export KOLIBRI_CHANNELS_TO_IMPORT="channel_id_1,channel_id_2"
+```
+
+See `docker/entrypoint.py` for full documentation.
+
+## Automated Provisioning
+
+Kolibri supports automated device provisioning for bulk deployment:
+
+### Command Line Provisioning
+
+```bash
+kolibri manage provisiondevice \
+  --facility "My School" \
+  --preset formal \
+  --superusername admin \
+  --superuserpassword changeme \
+  --language_id en \
+  --verbosity 0 \
+  --noinput
+```
+
+### File-based Provisioning
+
+Use a provisioning file for consistent deployment:
+
+```json
+# automatic_provision.json
+{
+  "facility_name": "My School",
+  "preset": "formal",
+  "superuser": {
+    "username": "admin",
+    "password": "changeme"
+  },
+  "language_id": "en",
+  "facility_settings": {
+    "learner_can_sign_up": true,
+    "learner_can_login_with_no_password": false
+  }
+}
+```
+
+Configure path in `options.ini`:
+
+```ini
+[Paths]
+AUTOMATIC_PROVISION_FILE = /path/to/automatic_provision.json
+```
+
+Kolibri will automatically provision on first run.
+
+## Offline Sync and Peer Discovery
+
+Kolibri supports offline peer-to-peer sync:
+
+### Network Location Discovery
+
+Kolibri uses Zeroconf for local network discovery:
+
+```python
+# Automatic peer discovery on local network
+# No internet required
+# Peers discovered via mDNS/Zeroconf
+```
+
+### Sync Without Internet
+
+Sync facilities between Kolibri instances on local network:
+
+<Steps>
+  <Step title="Configure Source Instance">
+    Ensure the source instance is accessible on local network.
+  </Step>
+
+  <Step title="Discover Peers">
+    On target instance, navigate to:
+    - Device > Facilities
+    - Select "Import facility"
+    - Discovered local instances appear automatically
+  </Step>
+
+  <Step title="Sync Data">
+    Select source facility and sync:
+    - User data
+    - Progress information
+    - Logs and analytics
+  </Step>
+</Steps>
+
+<Note>
+  The `SYNC_INTERVAL` setting controls how frequently SoUD (Sync on Unpredictable Data) instances resync. Configure in `options.ini`:
+
+  ```ini
+  [Deployment]
+  SYNC_INTERVAL = 60  # seconds
+  ```
+</Note>
+
+## Update Strategy for Offline Environments
+
+### Manual Updates
+
+<Steps>
+  <Step title="Download Update Package">
+    On a machine with internet:
+    ```bash
+    # Download latest installer or PEX
+    wget https://learningequality.org/r/kolibri-pex-latest
+    ```
+  </Step>
+
+  <Step title="Transfer to Offline Network">
+    Copy installer to USB or shared network location.
+  </Step>
+
+  <Step title="Install Update">
+    ```bash
+    # Stop current instance
+    kolibri stop
+
+    # Install update
+    pip install --upgrade ./kolibri-0.17.0.whl
+
+    # Or replace PEX file
+    cp kolibri-0.17.0.pex /usr/local/bin/kolibri.pex
+
+    # Migrate database
+    kolibri manage migrate
+
+    # Start updated instance
+    kolibri start
+    ```
+  </Step>
+</Steps>
+
+### Disabling Update Notifications
+
+Prevent update checks when offline:
+
+```ini
+[Deployment]
+DISABLE_PING = True
+```
+
+Or via environment variable:
+
+```bash
+export KOLIBRI_DEPLOYMENT_DISABLE_PING=True
+```
+
+## USB Distribution Strategy
+
+For environments without any network infrastructure:
+
+### Master USB Drive Setup
+
+<Steps>
+  <Step title="Prepare USB Drive">
+    ```bash
+    # Create directory structure
+    /media/usb/kolibri-deployment/
+    ├── installer/
+    │   ├── kolibri-installer.exe
+    │   ├── kolibri.deb
+    │   └── kolibri.pex
+    ├── content/
+    │   ├── channel1.tar.gz
+    │   ├── channel2.tar.gz
+    │   └── README.txt
+    ├── templates/
+    │   └── kolibri-home-template.tar.gz
+    └── docs/
+        ├── installation-guide.pdf
+        └── content-import-guide.pdf
+    ```
+  </Step>
+
+  <Step title="Include Installation Scripts">
+    Create automated installation scripts:
+
+    ```bash
+    #!/bin/bash
+    # install-kolibri-offline.sh
+
+    set -e
+
+    echo "Installing Kolibri offline..."
+
+    # Install Kolibri
+    pip install --no-index --find-links=./packages kolibri-static
+
+    # Set up KOLIBRI_HOME
+    export KOLIBRI_HOME=~/.kolibri
+    mkdir -p $KOLIBRI_HOME
+
+    # Extract template
+    if [ -f ./templates/kolibri-home-template.tar.gz ]; then
+        tar -xzf ./templates/kolibri-home-template.tar.gz -C $KOLIBRI_HOME
+    fi
+
+    # Import content
+    for archive in ./content/*.tar.gz; do
+        channel_id=$(basename $archive .tar.gz)
+        echo "Importing $channel_id..."
+        temp_dir=$(mktemp -d)
+        tar -xzf $archive -C $temp_dir
+        kolibri manage importchannel disk $channel_id $temp_dir
+        kolibri manage importcontent disk $channel_id $temp_dir
+        rm -rf $temp_dir
+    done
+
+    echo "Installation complete!"
+    kolibri start
+    ```
+  </Step>
+
+  <Step title="Distribute to Target Devices">
+    - Copy USB contents to each device
+    - Run installation script
+    - Verify installation
+  </Step>
+</Steps>
+
+## Configuration for Network-Free Operation
+
+### Disable Network Features
+
+```ini
+[Deployment]
+DISABLE_PING = True
+REMOTE_CONTENT = False
+
+[Urls]
+CENTRAL_CONTENT_BASE_URL = http://localhost:8080  # Prevent external requests
+DATA_PORTAL_SYNCING_BASE_URL = http://localhost:8080
+```
+
+### Optimize for Offline
+
+```ini
+[Paths]
+CONTENT_DIR = content
+CONTENT_FALLBACK_DIRS = /media/usb/content;/media/backup/content
+
+[Server]
+CHERRYPY_THREAD_POOL = 50  # Lower for offline use
+
+[Cache]
+CACHE_BACKEND = memory  # Don't require Redis
+```
+
+## Testing Offline Deployment
+
+### Checklist
+
+<AccordionGroup>
+  <Accordion title="Installation Testing">
+    - [ ] Install completes without network
+    - [ ] All dependencies bundled
+    - [ ] No download attempts during install
+    - [ ] Installer works from USB drive
+  </Accordion>
+
+  <Accordion title="Content Testing">
+    - [ ] Pre-loaded content appears in channels
+    - [ ] Content plays without network
+    - [ ] Import from disk succeeds
+    - [ ] Export to disk succeeds
+  </Accordion>
+
+  <Accordion title="Functionality Testing">
+    - [ ] Server starts without network
+    - [ ] Users can authenticate
+    - [ ] Facilities can be created
+    - [ ] Learning content accessible
+    - [ ] Progress tracking works
+  </Accordion>
+
+  <Accordion title="Sync Testing">
+    - [ ] Local network discovery works
+    - [ ] Peer-to-peer sync succeeds
+    - [ ] No internet sync attempts
+    - [ ] Sync data validates correctly
+  </Accordion>
+</AccordionGroup>
+
+### Simulating Offline Environment
+
+Test offline deployment:
+
+```bash
+# Disable network interface
+sudo ifconfig eth0 down
+sudo ifconfig wlan0 down
+
+# Or use network namespace
+sudo unshare --net -- su - $USER
+
+# Install and test Kolibri
+# ...
+
+# Re-enable network
+sudo ifconfig eth0 up
+```
+
+## Troubleshooting
+
+### Content Not Appearing
+
+```bash
+# Check content directory
+ls -la $KOLIBRI_HOME/content
+
+# Verify content database
+sqlite3 $KOLIBRI_HOME/content/content_database_*.sqlite3 \
+  "SELECT COUNT(*) FROM content_contentnode;"
+
+# Re-import if needed
+kolibri manage importcontent disk <channel_id> /path/to/content
+```
+
+### Database Migration Failures
+
+```bash
+# Check database integrity
+sqlite3 $KOLIBRI_HOME/db.sqlite3 "PRAGMA integrity_check;"
+
+# Reset migrations (caution: data loss)
+kolibri manage migrate --fake-initial
+```
+
+### Peer Discovery Not Working
+
+```bash
+# Check Zeroconf service
+kolibri manage networklocations list
+
+# Verify firewall allows mDNS (port 5353)
+sudo ufw allow 5353/udp
+
+# Restart discovery
+kolibri stop
+kolibri start
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Plan Content Carefully" icon="list-check">
+    - Identify required channels beforehand
+    - Estimate storage requirements
+    - Prioritize essential content
+    - Test content playback
+  </Card>
+  <Card title="Document Everything" icon="book">
+    - Create installation guides
+    - Document content structure
+    - Provide troubleshooting steps
+    - Include offline contact info
+  </Card>
+  <Card title="Test Thoroughly" icon="vial">
+    - Test complete offline workflow
+    - Verify on target hardware
+    - Test with real users
+    - Plan for edge cases
+  </Card>
+  <Card title="Plan for Updates" icon="arrows-rotate">
+    - Establish update schedule
+    - Create update distribution plan
+    - Document update procedure
+    - Train local administrators
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Production Deployment" icon="server" href="/deployment/production">
+    Configure for production environments
+  </Card>
+  <Card title="Android Deployment" icon="mobile" href="/deployment/android">
+    Build offline Android APK
+  </Card>
+</CardGroup>

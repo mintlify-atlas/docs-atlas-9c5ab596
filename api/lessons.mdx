@@ -1,0 +1,201 @@
+---
+title: "Lessons"
+description: "API endpoints for creating and managing lessons and lesson assignments"
+---
+
+## Lessons
+
+### List Lessons
+
+Retrieve all lessons in a classroom or facility.
+
+```bash GET /api/lessons/lesson
+curl "http://localhost:8080/api/lessons/lesson?collection=classroom-uuid"
+```
+
+#### Query Parameters
+
+<ParamField query="collection" type="string">
+  Filter by collection (classroom) UUID
+</ParamField>
+
+<ParamField query="id" type="string">
+  Filter by specific lesson ID
+</ParamField>
+
+#### Response Fields
+
+<ResponseField name="id" type="string">
+  Lesson unique identifier
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  Lesson title
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Lesson description
+</ResponseField>
+
+<ResponseField name="resources" type="array">
+  Array of resource objects with contentnode_id, content_id, channel_id
+</ResponseField>
+
+<ResponseField name="is_active" type="boolean">
+  Whether the lesson is currently active
+</ResponseField>
+
+<ResponseField name="collection" type="string">
+  UUID of the classroom/collection
+</ResponseField>
+
+<ResponseField name="classroom" type="object">
+  Classroom object with id, name, and parent
+</ResponseField>
+
+<ResponseField name="created_by" type="string">
+  UUID of the user who created the lesson
+</ResponseField>
+
+<ResponseField name="date_created" type="string">
+  ISO 8601 timestamp of creation
+</ResponseField>
+
+<ResponseField name="assignments" type="array">
+  Array of collection UUIDs (groups) assigned to
+</ResponseField>
+
+<ResponseField name="learner_ids" type="array">
+  Array of individual learner UUIDs assigned to
+</ResponseField>
+
+### Get Lesson
+
+Retrieve details of a specific lesson.
+
+```bash GET /api/lessons/lesson/:id
+curl http://localhost:8080/api/lessons/lesson/lesson-uuid-here
+```
+
+### Create Lesson
+
+Create a new lesson.
+
+```bash POST /api/lessons/lesson
+curl -X POST http://localhost:8080/api/lessons/lesson \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Introduction to Mathematics",
+    "description": "Basic math concepts",
+    "resources": [
+      {
+        "contentnode_id": "node-uuid",
+        "content_id": "content-uuid",
+        "channel_id": "channel-uuid"
+      }
+    ],
+    "is_active": true,
+    "collection": "classroom-uuid",
+    "assignments": ["group-uuid-1", "group-uuid-2"],
+    "learner_ids": ["learner-uuid-1"]
+  }'
+```
+
+#### Request Parameters
+
+<ParamField body="title" type="string" required>
+  Lesson title
+</ParamField>
+
+<ParamField body="description" type="string">
+  Lesson description
+</ParamField>
+
+<ParamField body="resources" type="array" required>
+  Array of resource objects, each containing contentnode_id, content_id, and channel_id
+</ParamField>
+
+<ParamField body="is_active" type="boolean">
+  Whether lesson is active (default: true)
+</ParamField>
+
+<ParamField body="collection" type="string" required>
+  UUID of the classroom this lesson belongs to
+</ParamField>
+
+<ParamField body="assignments" type="array">
+  Array of collection (group) UUIDs to assign this lesson to
+</ParamField>
+
+<ParamField body="learner_ids" type="array">
+  Array of individual learner UUIDs to assign this lesson to
+</ParamField>
+
+### Update Lesson
+
+Update an existing lesson.
+
+```bash PATCH /api/lessons/lesson/:id
+curl -X PATCH http://localhost:8080/api/lessons/lesson/lesson-uuid-here \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Updated Lesson Title",
+    "is_active": false
+  }'
+```
+
+### Delete Lesson
+
+Delete a lesson.
+
+```bash DELETE /api/lessons/lesson/:id
+curl -X DELETE http://localhost:8080/api/lessons/lesson/lesson-uuid-here
+```
+
+### Get Lesson Size
+
+Calculate the total size of all resources in lessons.
+
+```bash GET /api/lessons/lesson/size
+curl "http://localhost:8080/api/lessons/lesson/size?collection=classroom-uuid"
+```
+
+#### Response
+
+Returns an array of objects with lesson IDs as keys and sizes in bytes as values:
+
+```json
+[
+  {
+    "lesson-uuid-1": 52428800
+  },
+  {
+    "lesson-uuid-2": 104857600
+  }
+]
+```
+
+## Lesson Resources
+
+Resources are embedded in the lesson object. Each resource contains:
+
+<ResponseField name="contentnode_id" type="string">
+  UUID of the content node
+</ResponseField>
+
+<ResponseField name="content_id" type="string">
+  Content identifier
+</ResponseField>
+
+<ResponseField name="channel_id" type="string">
+  Channel UUID
+</ResponseField>
+
+## Lesson Assignments
+
+Lesson assignments determine which learners or groups can access a lesson. They are managed through the `assignments` and `learner_ids` fields on the Lesson object:
+
+- **assignments**: Array of collection (group) UUIDs - assigns the lesson to all members of these groups
+- **learner_ids**: Array of individual learner UUIDs - assigns the lesson to specific learners directly
+
+When you create or update a lesson with these fields, Kolibri automatically creates the appropriate LessonAssignment records in the database.

@@ -1,0 +1,607 @@
+---
+title: Coach Plugin
+description: Coach tools for creating lessons, assigning quizzes, and tracking learner progress
+---
+
+The Coach plugin provides educators with comprehensive tools to manage classes, create learning activities, assign assessments, and monitor learner progress. It enables coaches to deliver structured learning experiences and gain insights into learner performance.
+
+## Overview
+
+The Coach plugin is designed for teachers, tutors, and facilitators who guide learners through educational content. It provides a complete workflow for planning, delivering, and assessing learning activities.
+
+**Key Capabilities:**
+- Create and manage lessons with curated resources
+- Build custom quizzes and assessments
+- Assign learning activities to classes or groups
+- Track individual and class-wide progress
+- Monitor quiz performance and identify struggling learners
+- Manage learner groups for differentiated instruction
+
+<Info>
+The Coach plugin requires a full facility setup and is available to users with the Coach or Admin role.
+</Info>
+
+## Coach Dashboard
+
+The Coach home page provides an at-a-glance overview of class activity and coaching tasks.
+
+### Dashboard Sections
+
+<AccordionGroup>
+  <Accordion title="Overview Block">
+    Displays class summary information:
+    - Total learners in all classes
+    - Active lessons and quizzes
+    - Recent learner activity
+    - Classes requiring attention
+  </Accordion>
+  
+  <Accordion title="Lessons Block">
+    Shows recently active lessons:
+    - Lesson titles and assigned classes
+    - Progress indicators
+    - Learners needing help
+    - Quick access to lesson reports
+  </Accordion>
+  
+  <Accordion title="Quizzes Block">
+    Displays recent quiz activity:
+    - Quiz titles and assigned classes
+    - Average scores
+    - Submission status
+    - Learners who may need support
+  </Accordion>
+  
+  <Accordion title="Activity Block">
+    Recent learner engagement:
+    - Learners who completed activities
+    - Recent quiz submissions
+    - Lesson progress updates
+    - Time-stamped activity feed
+  </Accordion>
+</AccordionGroup>
+
+### Class Selection
+
+Coaches can work with multiple classes:
+- Switch between classes using class selector
+- View aggregated data across all classes on dashboard
+- Access class-specific views for detailed management
+
+## Creating Lessons
+
+Lessons are curated collections of learning resources assigned to learners.
+
+### Lesson Creation Workflow
+
+<Steps>
+  <Step title="Start New Lesson">
+    Navigate to the Lessons tab and click "New Lesson":
+    - Enter lesson title (required)
+    - Add description to provide context
+    - Select recipients (entire class or specific groups)
+    - Set lesson visibility and availability
+  </Step>
+  
+  <Step title="Select Resources">
+    Build the lesson by adding resources from available content:
+    
+    **Browse Options:**
+    - **Topic Tree**: Navigate through channel topics hierarchically
+    - **Search**: Find specific resources by keyword
+    - **Bookmarks**: Use previously bookmarked content
+    
+    **Resource Selection:**
+    - Preview resources before adding
+    - View resource metadata (type, duration, language)
+    - Add multiple resources from same topic
+    - See resource details and descriptions
+  </Step>
+  
+  <Step title="Organize Resources">
+    Arrange lesson content:
+    - Drag and drop to reorder resources
+    - Remove resources if needed
+    - Preview the learner's view
+    - Set recommended sequence
+  </Step>
+  
+  <Step title="Review and Assign">
+    Finalize the lesson:
+    - Review all selected resources
+    - Confirm recipient groups
+    - Save as draft or make active
+    - Edit details if needed
+  </Step>
+</Steps>
+
+### Lesson Management
+
+After creating lessons, coaches can:
+
+**Edit Lessons**
+- Modify title and description
+- Add or remove resources
+- Reorder content
+- Change recipient assignments
+
+**Manage Visibility**
+- Make lessons visible or hidden from learners
+- Set lesson as active or inactive
+- Archive completed lessons
+
+**Copy Lessons**
+- Duplicate lessons for reuse
+- Assign copied lessons to different classes
+- Modify copies without affecting originals
+
+**Delete Lessons**
+- Remove lessons no longer needed
+- Confirmation required to prevent accidental deletion
+
+<Warning>
+Changes to active lessons are immediately visible to learners. Consider learner impact when editing in-progress lessons.
+</Warning>
+
+## Building Quizzes
+
+Quizzes are assessments that coaches create to evaluate learner understanding.
+
+### Quiz Creation Process
+
+<Steps>
+  <Step title="Create Quiz">
+    Start a new quiz:
+    - Enter quiz title and description
+    - Select recipients (class or groups)
+    - Choose section ordering (randomized or fixed)
+  </Step>
+  
+  <Step title="Build Quiz Sections">
+    Quizzes are organized into sections:
+    
+    **Section Management:**
+    - Create multiple sections for topic organization
+    - Name each section descriptively
+    - Set section-specific settings
+    - Reorder sections for logical flow
+  </Step>
+  
+  <Step title="Add Questions">
+    Select questions from available exercises:
+    
+    **Question Selection Methods:**
+    - **Topic Tree**: Browse exercises by subject
+    - **Search**: Find exercises by keywords and filters
+    - **Bookmarks**: Use saved exercises
+    
+    **Question Settings:**
+    - Choose specific questions from exercises
+    - Set number of questions per section
+    - Preview questions before adding
+    - Randomize question selection from pools
+  </Step>
+  
+  <Step title="Configure Quiz Settings">
+    Set quiz parameters:
+    - **Question Order**: Randomized or fixed
+    - **Section Order**: Randomized or fixed
+    - **Recipients**: Entire class or specific groups
+    - **Visibility**: Active or draft status
+  </Step>
+  
+  <Step title="Review and Assign">
+    Before making quiz active:
+    - Preview quiz from learner perspective
+    - Verify question count and distribution
+    - Check section organization
+    - Confirm recipient assignments
+  </Step>
+</Steps>
+
+### Quiz Management Features
+
+**Edit Quizzes**
+- Modify quiz details and settings
+- Add or remove questions
+- Reorganize sections
+- Change recipient assignments
+
+**Manage Difficulty**
+- Balance question difficulty across quiz
+- Include variety of question types
+- Adjust section difficulty progression
+
+**Quiz Options**
+- Set quiz as active or inactive
+- Copy quizzes for reuse
+- Delete unused quizzes
+- Archive completed assessments
+
+<Info>
+Quiz changes affect learners differently based on their progress:
+- Learners who haven't started see the updated quiz
+- Learners in progress may see changes on next session
+- Completed quizzes remain unchanged
+</Info>
+
+## Assigning to Groups
+
+Coaches can create learner groups for differentiated instruction and targeted assignments.
+
+### Group Management
+
+<Steps>
+  <Step title="Create Groups">
+    Navigate to Groups tab:
+    - Click "New Group"
+    - Enter descriptive group name
+    - Optionally add description
+  </Step>
+  
+  <Step title="Enroll Learners">
+    Add learners to groups:
+    - Select from class roster
+    - Add multiple learners at once
+    - Move learners between groups
+    - Remove learners from groups
+  </Step>
+  
+  <Step title="Assign Activities">
+    When creating lessons or quizzes:
+    - Choose specific groups as recipients
+    - Assign different content to different groups
+    - Support tiered instruction approaches
+  </Step>
+</Steps>
+
+### Group Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Ability Grouping" icon="layer-group">
+    Create groups based on skill level for differentiated content and pacing.
+  </Card>
+  
+  <Card title="Project Teams" icon="users">
+    Organize learners into project-based teams for collaborative activities.
+  </Card>
+  
+  <Card title="Remediation" icon="user-plus">
+    Group learners needing additional support for targeted interventions.
+  </Card>
+  
+  <Card title="Advanced Track" icon="graduation-cap">
+    Provide enrichment activities to learners ready for advanced content.
+  </Card>
+</CardGroup>
+
+## Tracking Progress
+
+The Coach plugin provides comprehensive reporting on learner activity and performance.
+
+### Lesson Reports
+
+**Lesson Summary View**
+
+For each lesson, coaches can view:
+- Overall completion rate
+- Average time spent
+- Learners who completed the lesson
+- Learners in progress
+- Learners who haven't started
+
+**Resource-Level Reports**
+
+Detailed insights for each resource in the lesson:
+- How many learners viewed the resource
+- Average time spent on resource
+- Completion status by learner
+- Exercise performance (for practice exercises)
+
+**Learner-Level Reports**
+
+Individual learner progress:
+- Resources completed
+- Time spent per resource
+- Current position in lesson
+- Help needed indicators
+
+<Tabs>
+  <Tab title="Lesson Resources Table">
+    View all resources in the lesson with:
+    - Resource title and type
+    - Number of learners completed
+    - Average progress percentage
+    - Click through to resource-specific reports
+  </Tab>
+  
+  <Tab title="Lesson Learners Table">
+    View all learners assigned to the lesson:
+    - Learner name
+    - Progress percentage
+    - Last activity timestamp
+    - Status indicators (completed, in progress, not started)
+  </Tab>
+</Tabs>
+
+### Quiz Reports
+
+**Quiz Summary View**
+
+Aggregate quiz performance:
+- Average score across all learners
+- Score distribution
+- Completion rate
+- Difficult questions analysis
+
+**Difficult Questions Table**
+
+Identify challenging questions:
+- Questions sorted by incorrect response rate
+- Number of learners who answered incorrectly
+- Percentage of learners struggling
+- Click through to see specific learner responses
+
+**Learner-Level Quiz Reports**
+
+Individual assessment results:
+- Overall score and percentage
+- Question-by-question breakdown
+- Correct and incorrect answers
+- Time spent on quiz
+- Number of attempts (if retakes allowed)
+
+**Question-Level Analysis**
+
+For each question:
+- View all learner responses
+- See which learners answered correctly/incorrectly
+- Identify common wrong answers
+- Review individual learner attempts
+
+### Class Reports
+
+**Class Summary Page**
+
+Overall class performance:
+- Total learners
+- Active lessons and quizzes
+- Overall engagement metrics
+- Recent activity overview
+
+**Learner Summary Reports**
+
+Individual learner profiles showing:
+- All assigned lessons and progress
+- All assigned quizzes and scores
+- Total time spent learning
+- Recent activity history
+- Resources viewed and completed
+
+### Progress Indicators
+
+Throughout the Coach interface, visual indicators help coaches quickly assess status:
+
+<AccordionGroup>
+  <Accordion title="Status Icons">
+    - **Completed**: Checkmark icon
+    - **In Progress**: Partial progress indicator
+    - **Not Started**: Empty or neutral indicator
+    - **Help Needed**: Warning icon for struggling learners
+  </Accordion>
+  
+  <Accordion title="Progress Bars">
+    - Visual bars showing completion percentage
+    - Color-coded for quick scanning
+    - Hover for detailed numbers
+  </Accordion>
+  
+  <Accordion title="Performance Metrics">
+    - Average scores displayed prominently
+    - Score ranges and distributions
+    - Comparison to class averages
+  </Accordion>
+</AccordionGroup>
+
+## Managing Classes
+
+Coaches can manage multiple classes and view aggregated or class-specific data.
+
+### Class Management Features
+
+**Viewing Class Roster**
+- See all enrolled learners
+- View learner details
+- Check enrollment status
+- Access individual learner reports
+
+**Class-Level Actions**
+- Create lessons for the class
+- Assign quizzes to the class
+- View class-wide reports
+- Monitor overall engagement
+
+**Cross-Class Views**
+- Dashboard shows all classes
+- Filter reports by class
+- Compare performance across classes
+- Manage assignments across multiple classes
+
+## Notifications and Alerts
+
+The Coach plugin includes a notification system to alert coaches about important events.
+
+### Notification Types
+
+<CardGroup cols={2}>
+  <Card title="Quiz Submissions" icon="bell">
+    Alert when learners complete quizzes, enabling timely review.
+  </Card>
+  
+  <Card title="Lesson Completion" icon="check-circle">
+    Notify when learners finish assigned lessons.
+  </Card>
+  
+  <Card title="Help Needed" icon="exclamation-triangle">
+    Flag learners struggling with exercises or content.
+  </Card>
+  
+  <Card title="Low Scores" icon="chart-line">
+    Alert for quiz scores below expected performance.
+  </Card>
+</CardGroup>
+
+### Notification Management
+
+- View all notifications in centralized feed
+- Filter notifications by type and class
+- Mark notifications as read/unread
+- Click through to relevant reports
+
+## Resource Bookmarking
+
+Coaches can bookmark resources for quick access when creating lessons and quizzes.
+
+### Bookmark Workflow
+
+<Steps>
+  <Step title="Browse and Preview">
+    While exploring content, coaches can:
+    - Preview any resource
+    - View resource metadata
+    - Assess appropriateness for lessons
+  </Step>
+  
+  <Step title="Add Bookmarks">
+    Save useful resources:
+    - Click bookmark icon on any resource
+    - Add to bookmarks collection
+    - Organize saved resources
+  </Step>
+  
+  <Step title="Use in Assignments">
+    When creating lessons or quizzes:
+    - Access "Bookmarks" tab
+    - Quickly find saved resources
+    - Add bookmarked items to assignments
+  </Step>
+</Steps>
+
+<Tip>
+Bookmarking frequently used resources saves time when creating new lessons and allows coaches to build a curated library of high-quality content.
+</Tip>
+
+## Coach Tools and Workflows
+
+### Common Coaching Workflows
+
+**Weekly Lesson Planning**
+1. Review learner progress from previous week
+2. Identify topics needing reinforcement
+3. Create new lesson with targeted resources
+4. Assign to appropriate groups or entire class
+5. Monitor engagement throughout week
+
+**Assessment Cycle**
+1. Create pre-assessment quiz
+2. Assign lesson with learning resources
+3. Monitor lesson progress
+4. Create post-assessment quiz
+5. Review results and identify gaps
+6. Provide remediation or advancement
+
+**Differentiated Instruction**
+1. Create learner groups based on needs
+2. Assign different difficulty levels to groups
+3. Monitor progress across groups
+4. Adjust assignments based on performance
+5. Move learners between groups as needed
+
+### Report-Driven Interventions
+
+Using reports to guide instruction:
+
+<Steps>
+  <Step title="Identify Struggling Learners">
+    Review reports to find:
+    - Low quiz scores
+    - Incomplete lessons
+    - Exercises with low mastery
+    - Minimal engagement
+  </Step>
+  
+  <Step title="Analyze Patterns">
+    Look for:
+    - Common difficult questions
+    - Topics with low completion
+    - Resources where learners spend excess time
+    - Gaps in understanding
+  </Step>
+  
+  <Step title="Provide Support">
+    Take action:
+    - Create targeted lessons for remediation
+    - Assign to small groups or individuals
+    - Provide additional practice exercises
+    - Offer alternative explanations
+  </Step>
+  
+  <Step title="Monitor Improvement">
+    Track outcomes:
+    - Re-assess after intervention
+    - Compare before/after performance
+    - Adjust approach based on results
+  </Step>
+</Steps>
+
+## Courses and Structured Learning
+
+When course content is available, coaches have additional features for delivering structured curricula.
+
+### Course Management
+
+**Assigning Courses**
+- View available course content
+- Assign entire courses to classes
+- Track progress through course units
+- Monitor course completion
+
+**Course Progress Tracking**
+- Unit-by-unit progress
+- Course-wide completion rates
+- Learner pacing through course
+- Course mastery indicators
+
+<Info>
+Courses are pre-structured learning paths imported from Kolibri Studio. They differ from lessons, which are coach-created collections.
+</Info>
+
+## Accessibility and Usability
+
+The Coach plugin is designed for ease of use:
+
+- **Responsive Interface**: Works on tablets and desktop computers
+- **Keyboard Navigation**: Full keyboard access to all features
+- **Clear Visual Hierarchy**: Important information prominently displayed
+- **Efficient Workflows**: Streamlined processes for common tasks
+- **Batch Operations**: Manage multiple items at once
+
+## Related Documentation
+
+<CardGroup cols={2}>
+  <Card title="Learn Plugin" icon="book-reader" href="/features/learn">
+    Understand the learner experience and interface
+  </Card>
+  
+  <Card title="Facility Management" icon="school" href="/features/facility-management">
+    Manage classes, users, and facility settings
+  </Card>
+  
+  <Card title="Content Library" icon="books" href="/features/content-library">
+    Learn about available content channels and resources
+  </Card>
+  
+  <Card title="Device Management" icon="server" href="/features/device-management">
+    Import content and configure device settings
+  </Card>
+</CardGroup>

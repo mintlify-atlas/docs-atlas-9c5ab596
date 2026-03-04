@@ -1,0 +1,511 @@
+---
+title: Authentication
+description: API authentication, login, logout, and session management in Kolibri
+---
+
+## Overview
+
+Kolibri uses session-based authentication for the API. Users authenticate by creating a session, which is maintained via session cookies. The authentication system supports multiple methods including username/password, token-based authentication, and OS user integration.
+
+## Authentication Methods
+
+### Session Authentication (Primary)
+
+Kolibri uses Django session authentication as the primary authentication mechanism. After successful login, the server sets a session cookie that is included in subsequent requests.
+
+### Token Authentication
+
+Kolibri also supports token-based authentication using `user_id` and `auth_token` for specific use cases such as automatic login links.
+
+### OS User Authentication
+
+When running in app context, Kolibri supports automatic authentication for OS users via app authentication tokens.
+
+## Base URL
+
+All authentication endpoints are under:
+
+```
+/api/auth/
+```
+
+## Create Session (Login)
+
+<CodeGroup>
+```bash Username/Password
+curl -X POST http://localhost:8000/api/auth/session/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "admin",
+    "password": "password",
+    "facility": "facility-id-here"
+  }'
+```
+
+```bash Token Authentication
+curl -X POST http://localhost:8000/api/auth/session/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "user-id-here",
+    "auth_token": "token-here",
+    "facility": "facility-id-here"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('/api/auth/session/', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    username: 'admin',
+    password: 'password',
+    facility: 'facility-id-here'
+  })
+});
+
+const session = await response.json();
+console.log('Logged in:', session);
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'http://localhost:8000/api/auth/session/',
+    json={
+        'username': 'admin',
+        'password': 'password',
+        'facility': 'facility-id-here'
+    }
+)
+
+session = response.json()
+print(f"Logged in: {session}")
+```
+</CodeGroup>
+
+### Request Body
+
+<ParamField body="username" type="string">
+  Username of the user to authenticate. Required for username/password authentication.
+</ParamField>
+
+<ParamField body="password" type="string">
+  User's password. Can be an empty string if the facility allows passwordless login for learners.
+</ParamField>
+
+<ParamField body="facility" type="string">
+  UUID of the facility the user belongs to. If not provided, defaults to the default facility.
+</ParamField>
+
+<ParamField body="user_id" type="string">
+  UUID of the user (alternative to username for token authentication).
+</ParamField>
+
+<ParamField body="auth_token" type="string">
+  Authentication token for token-based login.
+</ParamField>
+
+### Response
+
+<ResponseField name="id" type="string">
+  Session identifier (always "current" for the current session).
+</ResponseField>
+
+<ResponseField name="username" type="string">
+  The authenticated user's username.
+</ResponseField>
+
+<ResponseField name="full_name" type="string">
+  The user's full name.
+</ResponseField>
+
+<ResponseField name="user_id" type="string">
+  UUID of the authenticated user.
+</ResponseField>
+
+<ResponseField name="facility_id" type="string">
+  UUID of the user's facility.
+</ResponseField>
+
+<ResponseField name="kind" type="array">
+  Array of user types (e.g., `["admin"]`, `["learner"]`, `["coach"]`).
+</ResponseField>
+
+<ResponseField name="can_manage_content" type="boolean">
+  Whether the user has permission to manage content.
+</ResponseField>
+
+<ResponseField name="is_superuser" type="boolean">
+  Whether the user is a device superuser.
+</ResponseField>
+
+<ResponseField name="server_time" type="string">
+  Current server time in ISO 8601 format.
+</ResponseField>
+
+<ResponseField name="app_context" type="boolean">
+  Whether the request is in app context.
+</ResponseField>
+
+**Example Success Response (200 OK):**
+
+```json
+{
+  "id": "current",
+  "username": "admin",
+  "full_name": "Admin User",
+  "user_id": "a1b2c3d4e5f6",
+  "facility_id": "f1a2c3i4l5i6",
+  "kind": ["admin"],
+  "can_manage_content": true,
+  "is_superuser": false,
+  "server_time": "2024-03-15T10:30:00Z",
+  "app_context": false
+}
+```
+
+### Error Responses
+
+**Invalid Credentials (401 Unauthorized):**
+
+```json
+[
+  {
+    "id": "INVALID_CREDENTIALS",
+    "metadata": {}
+  }
+]
+```
+
+**Username Not Found (400 Bad Request):**
+
+```json
+[
+  {
+    "id": "NOT_FOUND",
+    "metadata": {
+      "field": "username",
+      "message": "Username not found."
+    }
+  }
+]
+```
+
+**Missing Password (400 Bad Request):**
+
+```json
+[
+  {
+    "id": "MISSING_PASSWORD",
+    "metadata": {
+      "field": "password",
+      "message": "Username is valid, but password is missing."
+    }
+  }
+]
+```
+
+**Password Not Set (400 Bad Request):**
+
+Returned when a learner account requires a password to be set before login.
+
+```json
+[
+  {
+    "id": "PASSWORD_NOT_SPECIFIED",
+    "metadata": {
+      "field": "password",
+      "message": "Username is valid, but password needs to be set before login."
+    }
+  }
+]
+```
+
+## Get Current Session
+
+Retrieve information about the current session.
+
+```bash
+curl http://localhost:8000/api/auth/session/current/ \
+  -H "Cookie: sessionid=<session-cookie>"
+```
+
+**Response (200 OK):**
+
+Returns the same session object as the login response, including updated `server_time`.
+
+## Update Session
+
+Update session activity and log user session data.
+
+```bash
+curl -X PUT http://localhost:8000/api/auth/session/current/ \
+  -H "Content-Type: application/json" \
+  -H "Cookie: sessionid=<session-cookie>" \
+  -d '{
+    "active": true,
+    "os": "Windows 10",
+    "browser": "Chrome 120"
+  }'
+```
+
+<ParamField body="active" type="boolean" default="false">
+  Whether the user is currently active. When `true`, updates the user session log.
+</ParamField>
+
+<ParamField body="os" type="string">
+  Operating system information for session logging.
+</ParamField>
+
+<ParamField body="browser" type="string">
+  Browser information for session logging.
+</ParamField>
+
+**Response (200 OK):**
+
+Returns updated session data.
+
+## Logout (Destroy Session)
+
+End the current session and log out the user.
+
+```bash
+curl -X DELETE http://localhost:8000/api/auth/session/current/ \
+  -H "Cookie: sessionid=<session-cookie>"
+```
+
+**Response (200 OK):**
+
+```json
+[]
+```
+
+The session cookie will be invalidated, and subsequent requests will be treated as anonymous.
+
+## Set Password for Passwordless Account
+
+Set a password for a learner account that was created without one (when passwordless login was enabled).
+
+```bash
+curl -X POST http://localhost:8000/api/auth/setnonspecifiedpassword/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "learner1",
+    "password": "newpassword",
+    "facility": "facility-id-here"
+  }'
+```
+
+<ParamField body="username" type="string" required>
+  Username of the learner account.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  New password to set for the account.
+</ParamField>
+
+<ParamField body="facility" type="string" required>
+  UUID of the facility the user belongs to.
+</ParamField>
+
+**Response (200 OK):**
+
+Returns an empty response on success.
+
+**Error Response (404 Not Found):**
+
+```json
+"Suitable user does not exist"
+```
+
+Returned if:
+- The user doesn't exist
+- The user already has a password set
+- The user is an OS user
+
+## Check Username Availability
+
+Check if a username is available for registration in a specific facility.
+
+```bash
+curl -X POST http://localhost:8000/api/auth/usernameavailable/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "newuser",
+    "facility": "facility-id-here"
+  }'
+```
+
+<ParamField body="username" type="string" required>
+  Username to check for availability.
+</ParamField>
+
+<ParamField body="facility" type="string" required>
+  UUID of the facility to check within.
+</ParamField>
+
+**Success Response (200 OK):**
+
+```json
+true
+```
+
+**Username Exists (400 Bad Request):**
+
+```json
+[
+  {
+    "id": "USERNAME_ALREADY_EXISTS",
+    "metadata": {
+      "field": "username",
+      "message": "Username already exists."
+    }
+  }
+]
+```
+
+## User Sign Up
+
+Create a new learner account in a facility that allows self-registration.
+
+```bash
+curl -X POST http://localhost:8000/api/auth/signup/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "newlearner",
+    "password": "password123",
+    "full_name": "New Learner",
+    "facility": "facility-id-here",
+    "gender": "MALE",
+    "birth_year": "2010"
+  }'
+```
+
+<ParamField body="username" type="string" required>
+  Desired username (must be unique within the facility).
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  User's password.
+</ParamField>
+
+<ParamField body="full_name" type="string" required>
+  User's full name.
+</ParamField>
+
+<ParamField body="facility" type="string" required>
+  UUID of the facility to join.
+</ParamField>
+
+<ParamField body="gender" type="string">
+  User's gender. Options: `"MALE"`, `"FEMALE"`, `"NOT_SPECIFIED"`, or `"DEFERRED"`.
+</ParamField>
+
+<ParamField body="birth_year" type="string">
+  User's birth year as a string (e.g., `"2010"`).
+</ParamField>
+
+**Response (201 Created):**
+
+Returns the created user object and automatically logs the user in (sets session cookie).
+
+```json
+{
+  "id": "new-user-id",
+  "username": "newlearner",
+  "full_name": "New Learner",
+  "facility": "facility-id-here",
+  "gender": "MALE",
+  "birth_year": "2010",
+  "roles": [],
+  "is_superuser": false
+}
+```
+
+**Error Response (403 Forbidden):**
+
+```json
+"Cannot sign up to this facility"
+```
+
+Returned if:
+- The facility does not allow learner self-registration (`learner_can_sign_up` is `false`)
+- The facility is not a full facility import
+
+## Authentication Flow Example
+
+Here's a complete authentication flow example:
+
+```javascript
+// 1. Get CSRF token
+const sessionResponse = await fetch('/api/auth/session/current/');
+const csrfToken = sessionResponse.headers.get('X-CSRFToken');
+
+// 2. Login
+const loginResponse = await fetch('/api/auth/session/', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-CSRFToken': csrfToken
+  },
+  body: JSON.stringify({
+    username: 'admin',
+    password: 'password',
+    facility: facilityId
+  })
+});
+
+const session = await loginResponse.json();
+console.log('Logged in as:', session.username);
+
+// 3. Make authenticated requests
+const usersResponse = await fetch('/api/auth/facilityuser/', {
+  headers: {
+    'X-CSRFToken': csrfToken
+  }
+});
+
+const users = await usersResponse.json();
+
+// 4. Logout
+await fetch('/api/auth/session/current/', {
+  method: 'DELETE',
+  headers: {
+    'X-CSRFToken': csrfToken
+  }
+});
+```
+
+## Anonymous Access
+
+Some endpoints allow anonymous (unauthenticated) access depending on facility settings:
+
+- Public facility information
+- Public content metadata
+- Sign up endpoints (when enabled)
+
+Anonymous users receive a `visitor_id` cookie for tracking purposes but have limited permissions.
+
+## Session Timeout
+
+Sessions expire after a period of inactivity. The timeout duration is configurable. To prevent timeout:
+
+1. Periodically send PUT requests to `/api/auth/session/current/` with `active: true`
+2. The `last_session_request` timestamp is updated on each request
+
+## Security Considerations
+
+1. **HTTPS in Production**: Always use HTTPS in production to protect credentials in transit
+2. **CSRF Protection**: Include CSRF tokens in all state-changing requests
+3. **Password Strength**: Enforce strong passwords at the application level
+4. **Session Security**: Configure secure session cookies with `HttpOnly` and `Secure` flags
+5. **Rate Limiting**: Implement rate limiting on login endpoints to prevent brute force attacks
+
+## Related Endpoints
+
+- [Permissions](/api/permissions) - Understanding user roles and permissions
+- Facility Management - Managing facilities and facility settings
+- User Management - CRUD operations on user accounts

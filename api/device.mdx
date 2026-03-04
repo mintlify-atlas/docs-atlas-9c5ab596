@@ -1,0 +1,355 @@
+---
+title: "Device & Settings"
+description: "API endpoints for device information, settings, and permissions"
+---
+
+## Device Information
+
+### Get Device Info
+
+Retrieve information about the Kolibri device.
+
+```bash GET /api/device/info
+curl http://localhost:8080/api/device/info
+```
+
+#### Response Fields
+
+<ResponseField name="version" type="string">
+  Kolibri version number
+</ResponseField>
+
+<ResponseField name="device_id" type="string">
+  Unique device identifier
+</ResponseField>
+
+<ResponseField name="os" type="string">
+  Operating system (e.g., "Linux", "Windows", "Android")
+</ResponseField>
+
+<ResponseField name="urls" type="array">
+  Array of URLs where Kolibri is accessible
+</ResponseField>
+
+<ResponseField name="database_path" type="string">
+  Path to database file or database type
+</ResponseField>
+
+<ResponseField name="content_storage_free_space" type="integer">
+  Free space available for content in bytes
+</ResponseField>
+
+<ResponseField name="server_time" type="string">
+  Current server time in ISO 8601 format
+</ResponseField>
+
+<ResponseField name="server_timezone" type="string">
+  Server timezone name
+</ResponseField>
+
+<ResponseField name="installer" type="string">
+  Installation type (e.g., "deb", "pip", "pex")
+</ResponseField>
+
+<ResponseField name="python_version" type="string">
+  Python version running Kolibri
+</ResponseField>
+
+## Device Settings
+
+### Get Device Settings
+
+Retrieve current device settings.
+
+```bash GET /api/device/devicesettings
+curl http://localhost:8080/api/device/devicesettings
+```
+
+#### Response Fields
+
+<ResponseField name="language_id" type="string">
+  Default language for the device
+</ResponseField>
+
+<ResponseField name="landing_page" type="string">
+  Default landing page (e.g., "learn", "sign-in")
+</ResponseField>
+
+<ResponseField name="allow_guest_access" type="boolean">
+  Whether guest access is allowed
+</ResponseField>
+
+<ResponseField name="allow_peer_unlisted_channel_import" type="boolean">
+  Whether importing unlisted channels from peers is allowed
+</ResponseField>
+
+<ResponseField name="allow_learner_unassigned_resource_access" type="boolean">
+  Whether learners can access unassigned resources
+</ResponseField>
+
+<ResponseField name="allow_other_browsers_to_connect" type="boolean">
+  Whether other browsers can connect (for app context)
+</ResponseField>
+
+<ResponseField name="extra_fields" type="object">
+  Additional device-specific settings
+</ResponseField>
+
+### Update Device Settings
+
+Update device settings.
+
+```bash PATCH /api/device/devicesettings
+curl -X PATCH http://localhost:8080/api/device/devicesettings \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language_id": "en",
+    "allow_guest_access": true
+  }'
+```
+
+#### Request Parameters
+
+<ParamField body="language_id" type="string">
+  Default language ID
+</ParamField>
+
+<ParamField body="landing_page" type="string">
+  Default landing page
+</ParamField>
+
+<ParamField body="allow_guest_access" type="boolean">
+  Enable/disable guest access
+</ParamField>
+
+<ParamField body="allow_peer_unlisted_channel_import" type="boolean">
+  Enable/disable unlisted channel import from peers
+</ParamField>
+
+<ParamField body="allow_learner_unassigned_resource_access" type="boolean">
+  Enable/disable learner access to unassigned resources
+</ParamField>
+
+## Device Name
+
+### Get Device Name
+
+Retrieve the device name.
+
+```bash GET /api/device/devicename
+curl http://localhost:8080/api/device/devicename
+```
+
+#### Response
+
+```json
+{
+  "name": "My Kolibri Device"
+}
+```
+
+### Update Device Name
+
+Update the device name.
+
+```bash PATCH /api/device/devicename
+curl -X PATCH http://localhost:8080/api/device/devicename \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Updated Device Name"
+  }'
+```
+
+## Device Permissions
+
+### List Device Permissions
+
+Retrieve device permissions for users.
+
+```bash GET /api/device/devicepermissions
+curl http://localhost:8080/api/device/devicepermissions
+```
+
+#### Response Fields
+
+<ResponseField name="id" type="string">
+  Permission record identifier
+</ResponseField>
+
+<ResponseField name="user" type="string">
+  User UUID
+</ResponseField>
+
+<ResponseField name="is_superuser" type="boolean">
+  Whether user has superuser permissions
+</ResponseField>
+
+<ResponseField name="can_manage_content" type="boolean">
+  Whether user can manage content
+</ResponseField>
+
+### Create Device Permission
+
+Grant device permissions to a user.
+
+```bash POST /api/device/devicepermissions
+curl -X POST http://localhost:8080/api/device/devicepermissions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user": "user-uuid",
+    "is_superuser": false,
+    "can_manage_content": true
+  }'
+```
+
+#### Request Parameters
+
+<ParamField body="user" type="string" required>
+  UUID of the user
+</ParamField>
+
+<ParamField body="is_superuser" type="boolean">
+  Grant superuser permissions
+</ParamField>
+
+<ParamField body="can_manage_content" type="boolean">
+  Grant content management permissions
+</ParamField>
+
+### Update Device Permission
+
+Update existing device permissions.
+
+```bash PATCH /api/device/devicepermissions/:id
+curl -X PATCH http://localhost:8080/api/device/devicepermissions/permission-id \
+  -H "Content-Type: application/json" \
+  -d '{
+    "can_manage_content": false
+  }'
+```
+
+### Delete Device Permission
+
+Revoke device permissions from a user.
+
+```bash DELETE /api/device/devicepermissions/:id
+curl -X DELETE http://localhost:8080/api/device/devicepermissions/permission-id
+```
+
+## Free Space
+
+### Check Free Space
+
+Check available storage space for content.
+
+```bash GET /api/device/freespace?path=Content
+curl "http://localhost:8080/api/device/freespace?path=Content"
+```
+
+#### Query Parameters
+
+<ParamField query="path" type="string" required>
+  Must be "Content" to check content storage space
+</ParamField>
+
+#### Response
+
+```json
+{
+  "freespace": 52428800000
+}
+```
+
+<ResponseField name="freespace" type="integer">
+  Free space in bytes
+</ResponseField>
+
+## Path Permissions
+
+### Check Path Permissions
+
+Check if a filesystem path is writable.
+
+```bash GET /api/device/pathpermission
+curl "http://localhost:8080/api/device/pathpermission?path=/path/to/check"
+```
+
+#### Query Parameters
+
+<ParamField query="path" type="string">
+  Filesystem path to check (defaults to content directory)
+</ParamField>
+
+#### Response
+
+<ResponseField name="writable" type="boolean">
+  Whether the path is writable
+</ResponseField>
+
+<ResponseField name="directory" type="boolean">
+  Whether the path is a directory
+</ResponseField>
+
+<ResponseField name="path" type="string">
+  Resolved absolute path
+</ResponseField>
+
+## Device Restart
+
+### Get Restart Status
+
+Check if Kolibri is running and can be restarted.
+
+```bash GET /api/device/restart
+curl http://localhost:8080/api/device/restart
+```
+
+### Restart Device
+
+Restart the Kolibri server.
+
+```bash POST /api/device/restart
+curl -X POST http://localhost:8080/api/device/restart
+```
+
+## Drives
+
+### List Available Drives
+
+Get information about mounted drives with Kolibri content.
+
+```bash GET /api/device/driveinfo
+curl http://localhost:8080/api/device/driveinfo
+```
+
+#### Response
+
+Returns an array of drive objects:
+
+<ResponseField name="id" type="string">
+  Drive identifier
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Drive name/label
+</ResponseField>
+
+<ResponseField name="path" type="string">
+  Mount path
+</ResponseField>
+
+<ResponseField name="freespace" type="integer">
+  Free space in bytes
+</ResponseField>
+
+<ResponseField name="channels" type="array">
+  Array of channel objects available on this drive
+</ResponseField>
+
+### Get Drive Info
+
+Get information about a specific drive.
+
+```bash GET /api/device/driveinfo/:id
+curl http://localhost:8080/api/device/driveinfo/drive-id
+```

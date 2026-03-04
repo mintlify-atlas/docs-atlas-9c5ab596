@@ -1,0 +1,401 @@
+---
+title: Learn Plugin
+description: Learner interface for browsing content, viewing lessons, and accessing educational resources
+---
+
+The Learn plugin provides the primary learner-facing interface in Kolibri. It enables learners to access educational content, complete assigned lessons and quizzes, track their progress, and explore available learning resources.
+
+## Overview
+
+The Learn plugin is the main entry point for learners using Kolibri. It provides a personalized learning experience that adapts based on whether learners are signed in, enrolled in classes, and what content is available on their device.
+
+**Key Features:**
+- Personalized home page with learning recommendations
+- Content library browsing and search
+- Assigned lessons and quizzes from coaches
+- Progress tracking and resumable content
+- Offline content downloads (when enabled)
+- Multi-device library access
+
+## Learner Home Page
+
+The home page serves as the central hub for learners, displaying relevant content based on their context.
+
+### Signed-In Learners
+
+When learners are signed in and enrolled in classes, the home page displays:
+
+<Steps>
+  <Step title="Your Classes">
+    Shows all classes the learner is enrolled in, providing quick access to class-specific content and assignments.
+  </Step>
+  
+  <Step title="Continue Learning">
+    Displays resumable content from classes, including:
+    - Partially completed quizzes
+    - In-progress learning resources
+    - Recently accessed materials
+  </Step>
+  
+  <Step title="Recent Lessons">
+    Shows recently assigned lessons from all classes with:
+    - Lesson title and description
+    - Assigning class name
+    - Progress indicators
+  </Step>
+  
+  <Step title="Recent Quizzes">
+    Displays recently assigned quizzes with:
+    - Quiz title and details
+    - Status (not started, in progress, completed)
+    - Score information for completed quizzes
+  </Step>
+  
+  <Step title="Explore Channels">
+    Available when learners can access unassigned content, showing available content channels for self-directed learning.
+  </Step>
+</Steps>
+
+### Guest and Independent Learners
+
+For learners not enrolled in classes or using guest access:
+
+- **Continue Learning**: Shows previously accessed content for resumption
+- **Explore Channels**: Prominently displays all available content channels
+- **Recently Viewed**: Quick access to recently viewed resources
+
+## Content Library
+
+The Library page provides comprehensive access to all educational content available on the device.
+
+### Browsing Content
+
+**Channel Navigation**
+
+Content is organized into channels, which are collections of educational resources from content providers:
+
+- Channels display as cards with thumbnails, titles, and descriptions
+- Each channel contains a structured tree of topics and resources
+- Learners can browse hierarchically through topics to find specific content
+
+**Search and Filtering**
+
+The library includes powerful search capabilities:
+
+<AccordionGroup>
+  <Accordion title="Search Bar">
+    - Full-text search across all content titles and descriptions
+    - Real-time search results as learners type
+    - Search results show resource type, duration, and source channel
+  </Accordion>
+  
+  <Accordion title="Filter Options">
+    Learners can filter content by:
+    - **Learning Activity**: Videos, exercises, documents, HTML apps, etc.
+    - **Channel**: Specific content providers
+    - **Categories**: Subject areas and topics
+    - **Grade Levels**: Age-appropriate content
+    - **Languages**: Available content languages
+  </Accordion>
+  
+  <Accordion title="Card View Styles">
+    - **Grid View**: Visual cards showing thumbnails
+    - **List View**: Compact list format with metadata
+  </Accordion>
+</AccordionGroup>
+
+### Resumable Content
+
+The library tracks learner progress and highlights resumable content:
+
+- Progress indicators show completion percentage
+- Recently accessed content appears in "Continue Learning" sections
+- Bookmarked resources for easy access
+- Automatic progress saving across sessions
+
+## Viewing Lessons
+
+Lessons are curated collections of resources assigned by coaches.
+
+### Lesson Workflow
+
+<Steps>
+  <Step title="Access Assigned Lessons">
+    Learners view assigned lessons from:
+    - Home page "Recent Lessons" section
+    - Class assignments page
+    - "Your Classes" overview
+  </Step>
+  
+  <Step title="View Lesson Playlist">
+    Each lesson displays:
+    - Lesson title and description from coach
+    - Complete list of resources in the lesson
+    - Progress indicators for each resource
+    - Estimated time to complete
+  </Step>
+  
+  <Step title="Complete Resources">
+    Learners work through lesson resources:
+    - Click any resource to view/interact
+    - Automatic progress tracking
+    - Mark resources as complete
+    - Navigate with Previous/Next controls
+  </Step>
+  
+  <Step title="Track Progress">
+    Progress is tracked and visible to:
+    - Learner (on lesson page and home page)
+    - Coach (in lesson reports)
+    - Progress bar shows overall lesson completion
+  </Step>
+</Steps>
+
+### Resource Types in Lessons
+
+Lessons can contain various resource types:
+
+<CardGroup cols={2}>
+  <Card title="Videos" icon="play">
+    - Video player with playback controls
+    - Progress tracked by watch time
+    - Subtitle support when available
+  </Card>
+  
+  <Card title="Exercises" icon="pencil">
+    - Interactive practice questions
+    - Immediate feedback on answers
+    - Mastery-based progression
+    - Answer history and attempts
+  </Card>
+  
+  <Card title="Documents" icon="file">
+    - PDF and ePub readers
+    - Zoom and navigation controls
+    - Page-based progress tracking
+  </Card>
+  
+  <Card title="Interactive Content" icon="laptop">
+    - HTML5 apps and simulations
+    - H5P interactive activities
+    - Full-screen viewing option
+  </Card>
+</CardGroup>
+
+## Taking Quizzes
+
+Quizzes are assessments created by coaches to evaluate learner understanding.
+
+### Quiz-Taking Experience
+
+<Steps>
+  <Step title="Start Quiz">
+    - View quiz details (title, number of questions, status)
+    - See coach's instructions or description
+    - Click to begin or resume quiz
+  </Step>
+  
+  <Step title="Answer Questions">
+    - Questions appear one at a time or in sections
+    - Multiple question types: multiple choice, numeric input, etc.
+    - Navigate between questions
+    - Mark questions for review
+  </Step>
+  
+  <Step title="Submit Quiz">
+    - Review answers before submission
+    - Submit when ready (no time limit unless set by coach)
+    - Cannot change answers after submission
+  </Step>
+  
+  <Step title="View Results">
+    After submission:
+    - Overall score and percentage
+    - Correct/incorrect answers for each question
+    - Answer history showing all attempts
+    - Feedback on incorrect answers (when available)
+  </Step>
+</Steps>
+
+### Quiz Features
+
+<Info>
+Quizzes may be configured differently by coaches:
+- **Question Order**: Randomized or fixed order
+- **Retakes**: Some quizzes allow multiple attempts
+- **Feedback**: Immediate or delayed result visibility
+</Info>
+
+## Content Viewing Interface
+
+The resource viewer provides a consistent interface for accessing all content types.
+
+### Resource Metadata
+
+When viewing any resource, learners see:
+
+- **Resource Title**: Name of the content
+- **Description**: Detailed information about the resource
+- **Learning Activity**: Type (video, exercise, document, etc.)
+- **Duration**: Estimated time to complete
+- **Source**: Channel and content provider
+- **Language**: Primary language of the resource
+- **Related Content**: Other resources in the same topic
+
+### Navigation Controls
+
+<Accordion title="Previous/Next Bar">
+  - Navigate to previous/next resource in the current context
+  - Available when viewing resources from lessons or topic browsing
+  - Keyboard shortcuts for quick navigation
+</Accordion>
+
+<Accordion title="Completion Tracking">
+  - Manual "Mark as Complete" option for most resources
+  - Automatic completion for exercises reaching mastery
+  - Completion modal showing next suggested resources
+</Accordion>
+
+<Accordion title="Progress Indicators">
+  - Time spent on resource
+  - Completion percentage (for videos and documents)
+  - Exercise mastery progress
+  - Lesson progress if resource is part of a lesson
+</Accordion>
+
+## Class Assignments Page
+
+The Class Assignments page shows all active lessons and quizzes for a specific class.
+
+### Viewing Class Assignments
+
+**Lessons Tab**
+- Lists all active and completed lessons
+- Shows progress for each lesson
+- Indicates due dates (if set by coach)
+- Displays lesson status: Not Started, In Progress, Completed
+
+**Quizzes Tab**
+- Lists all assigned quizzes
+- Shows quiz status and scores
+- Indicates available retakes
+- Highlights quizzes needing attention
+
+## Offline Downloads
+
+When enabled by administrators, learners can download content for offline access.
+
+### My Downloads Feature
+
+<Steps>
+  <Step title="Browse Downloadable Content">
+    - View resources available for download
+    - See file sizes before downloading
+    - Filter by activity type and channel
+  </Step>
+  
+  <Step title="Download Resources">
+    - Select individual resources or topics
+    - Monitor download progress
+    - Download management with pause/resume
+  </Step>
+  
+  <Step title="Access Downloaded Content">
+    - View downloaded resources in My Downloads
+    - Access content without internet connection
+    - Manage storage by removing downloads
+  </Step>
+  
+  <Step title="Sync Progress">
+    - Progress syncs when reconnected
+    - Downloaded content updates automatically
+    - Removal of outdated content versions
+  </Step>
+</Steps>
+
+<Warning>
+Download availability depends on:
+- Administrator enabling learner downloads
+- Device storage capacity
+- Network connection settings (metered connection handling)
+</Warning>
+
+## Multi-Device Library Access
+
+Kolibri supports accessing content from other devices on the same network.
+
+### Other Libraries
+
+When other Kolibri devices are available:
+
+- **Discover Libraries**: Automatically detect other Kolibri instances on the local network
+- **Browse Remote Content**: Access content from other devices without downloading
+- **Unified Search**: Search across local and network libraries
+- **Streaming Access**: View resources directly from other devices
+
+<Info>
+This feature enables resource sharing across multiple Kolibri installations in schools or learning centers without duplicating content on every device.
+</Info>
+
+## Progress Tracking and Reports
+
+Learners can view their own progress throughout the Learn interface.
+
+### Personal Progress Indicators
+
+- **Lesson Progress**: Percentage complete for each lesson
+- **Quiz Scores**: Performance on completed quizzes
+- **Exercise Mastery**: Progress toward mastery for practice exercises
+- **Time Spent**: Engagement time tracked per resource
+- **Completion Status**: Visual indicators for finished content
+
+### Achievement Tracking
+
+- Resources completed
+- Lessons finished
+- Quizzes passed
+- Skills mastered through exercises
+
+<Note>
+Detailed analytics and class-wide reports are available to coaches through the Coach plugin.
+</Note>
+
+## Accessibility Features
+
+The Learn plugin includes accessibility support:
+
+- **Keyboard Navigation**: Full keyboard access to all features
+- **Screen Reader Support**: ARIA labels and semantic HTML
+- **Subtitle Support**: Video subtitles when available
+- **Responsive Design**: Adapts to different screen sizes
+- **RTL Language Support**: Right-to-left language layouts
+- **Adjustable Text**: Respects browser zoom and text size preferences
+
+## User Interface Customization
+
+Learners can customize their viewing experience:
+
+- **Card vs. List View**: Switch between visual and compact layouts
+- **Filter Preferences**: Save commonly used filters
+- **Bookmarks**: Mark favorite resources for quick access
+- **Resume Points**: Automatic saving of viewing position
+
+## Related Documentation
+
+<CardGroup cols={2}>
+  <Card title="Coach Plugin" icon="chalkboard-teacher" href="/features/coach">
+    Learn how coaches create lessons and track learner progress
+  </Card>
+  
+  <Card title="Content Library" icon="books" href="/features/content-library">
+    Understand content channels and available resources
+  </Card>
+  
+  <Card title="Device Management" icon="server" href="/features/device-management">
+    Configure content import and device settings
+  </Card>
+  
+  <Card title="Facility Management" icon="users" href="/features/facility-management">
+    Manage user accounts and enrollments
+  </Card>
+</CardGroup>

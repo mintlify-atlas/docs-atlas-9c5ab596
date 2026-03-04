@@ -1,0 +1,606 @@
+---
+title: Backend Development Guide
+description: Django models, ValuesViewset APIs, permissions, and backend patterns in Kolibri
+---
+
+## Overview
+
+Kolibri's backend is built with Django and uses custom patterns optimized for performance and offline use. This guide covers models, API development, permissions, and common patterns.
+
+## Backend Stack
+
+- **Framework**: Django 3.2+
+- **Database**: SQLite (with PostgreSQL support)
+- **API**: Django REST Framework with custom ValuesViewset
+- **Task Queue**: Background jobs with kolibri.core.tasks
+- **Testing**: pytest with Django test integration
+
+## ValuesViewset Pattern (Required)
+
+<Warning>
+  **Use `ValuesViewset` for all new API endpoints** unless there's a compelling reason not to. This is the standard pattern in Kolibri.
+</Warning>
+
+`ValuesViewset` provides significant performance benefits:
+
+- **Avoids N+1 queries** when traversing foreign keys
+- **Reduces memory usage** by not instantiating model objects
+- Single database query with only needed fields
+- Efficient handling of foreign key lookups using `__` notation
+
+### Basic ValuesViewset
+
+```python api.py
+from kolibri.core.api import ValuesViewset
+from kolibri.core.auth.api import KolibriAuthPermissions
+from .models import Lesson
+
+class LessonPermissions(KolibriAuthPermissions):
+    pass
+
+class LessonViewset(ValuesViewset):
+    queryset = Lesson.objects.all()
+    permission_classes = (LessonPermissions,)
+
+    # Define fields to fetch from database
+    values = (
+        "id",
+        "title",
+        "description",
+        "is_active",
+        "created_by",
+        "date_created",
+    )
+```
+
+### Foreign Key Lookups
+
+Use `__` notation to fetch related fields:
+
+```python
+class LessonViewset(ValuesViewset):
+    values = (
+        "id",
+        "title",
+        "collection__id",        # Classroom ID
+        "collection__name",      # Classroom name
+        "collection__parent_id", # Facility ID
+    )
+```
+
+### Field Mapping and Transformation
+
+Use `field_map` to rename fields or transform data:
+
+```python
+def _map_lesson_classroom(item):
+    """Transform flat classroom fields to nested object"""
+    return {
+        "id": item.pop("collection__id"),
+        "name": item.pop("collection__name"),
+        "parent": item.pop("collection__parent_id"),
+    }
+
+class LessonViewset(ValuesViewset):
+    values = (
+        "id",
+        "title",
+        "is_active",
+        "collection__id",
+        "collection__name",
+        "collection__parent_id",
+    )
+
+    field_map = {
+        "active": "is_active",              # Simple rename
+        "classroom": _map_lesson_classroom, # Transform to nested object
+    }
+```
+
+### Adding Computed Fields
+
+Use `annotate_queryset` to add aggregated or computed fields:
+
+```python
+from kolibri.core.query import annotate_array_aggregate
+
+class LessonViewset(ValuesViewset):
+    values = (
+        "id",
+        "title",
+        # ... other fields
+    )
+
+    def annotate_queryset(self, queryset):
+        """Add aggregated learner IDs"""
+        return annotate_array_aggregate(
+            queryset,
+            learner_ids="lesson_assignments__collection__membership__user_id"
+        )
+```
+
+### Post-Processing with consolidate
+
+Use `consolidate` to add related data efficiently:
+
+```python
+from .models import LessonAssignment
+from kolibri.core.auth.constants.collection_kinds import ADHOCLEARNERSGROUP
+
+class LessonViewset(ValuesViewset):
+    def consolidate(self, items, queryset):
+        """Add learner IDs for ad-hoc assignments"""
+        if not items:
+            return items
+
+        # Extract IDs from already-fetched items
+        lesson_ids = [item["id"] for item in items]
+
+        # Fetch related data in a single efficient query
+        adhoc_assignments = LessonAssignment.objects.filter(
+            lesson_id__in=lesson_ids,
+            collection__kind=ADHOCLEARNERSGROUP
+        )
+        adhoc_assignments = annotate_array_aggregate(
+            adhoc_assignments,
+            learner_ids="collection__membership__user_id"
+        )
+        adhoc_map = {
+            a["lesson"]: a
+            for a in adhoc_assignments.values("lesson", "learner_ids")
+        }
+
+        # Add to items
+        for item in items:
+            if item["id"] in adhoc_map:
+                item["learner_ids"] = adhoc_map[item["id"]]["learner_ids"]
+            else:
+                item["learner_ids"] = []
+
+        return items  # Always return items!
+```
+
+<Warning>
+  Always return `items` from `consolidate`. Forgetting to return will cause data to be lost.
+</Warning>
+
+### Complete ValuesViewset Example
+
+```python api.py
+from django_filters.rest_framework import DjangoFilterBackend
+from kolibri.core.api import ValuesViewset
+from kolibri.core.auth.api import KolibriAuthPermissions
+from kolibri.core.auth.api import KolibriAuthPermissionsFilter
+from kolibri.core.auth.constants.collection_kinds import ADHOCLEARNERSGROUP
+from kolibri.core.query import annotate_array_aggregate
+from .models import Lesson, LessonAssignment
+from .serializers import LessonSerializer
+
+
+class LessonPermissions(KolibriAuthPermissions):
+    # Permission logic here
+    pass
+
+
+def _map_lesson_classroom(item):
+    """Transform flat classroom fields to nested object"""
+    return {
+        "id": item.pop("collection__id"),
+        "name": item.pop("collection__name"),
+        "parent": item.pop("collection__parent_id"),
+    }
+
+
+class LessonViewset(ValuesViewset):
+    serializer_class = LessonSerializer
+    queryset = Lesson.objects.all().order_by("-date_created")
+    permission_classes = (LessonPermissions,)
+    filter_backends = (KolibriAuthPermissionsFilter, DjangoFilterBackend)
+    filterset_fields = ("collection", "id")
+
+    values = (
+        "id",
+        "title",
+        "description",
+        "resources",
+        "is_active",
+        "collection",           # Classroom FK (for filtering)
+        "collection__id",       # For _map_lesson_classroom
+        "collection__name",     # For _map_lesson_classroom
+        "collection__parent_id",# For _map_lesson_classroom
+        "created_by",
+        "date_created",
+    )
+
+    field_map = {
+        "active": "is_active",
+        "classroom": _map_lesson_classroom,
+    }
+
+    def annotate_queryset(self, queryset):
+        """Add aggregated assignment collections"""
+        return annotate_array_aggregate(
+            queryset,
+            lesson_assignment_collections="lesson_assignments__collection"
+        )
+
+    def consolidate(self, items, queryset):
+        """Add learner IDs for ad-hoc assignments"""
+        if not items:
+            return items
+
+        lesson_ids = [item["id"] for item in items]
+
+        adhoc_assignments = LessonAssignment.objects.filter(
+            lesson_id__in=lesson_ids,
+            collection__kind=ADHOCLEARNERSGROUP
+        )
+        adhoc_assignments = annotate_array_aggregate(
+            adhoc_assignments,
+            learner_ids="collection__membership__user_id"
+        )
+        adhoc_map = {
+            a["lesson"]: a
+            for a in adhoc_assignments.values("lesson", "learner_ids")
+        }
+
+        for item in items:
+            if item["id"] in adhoc_map:
+                item["learner_ids"] = adhoc_map[item["id"]]["learner_ids"]
+            else:
+                item["learner_ids"] = []
+
+        return items
+```
+
+### ValuesViewset Variants
+
+<Tabs>
+  <Tab title="ValuesViewset">
+    Full CRUD operations (Create, Retrieve, Update, Delete, List):
+
+    ```python
+    from kolibri.core.api import ValuesViewset
+
+    class MyViewset(ValuesViewset):
+        # Full CRUD
+        pass
+    ```
+  </Tab>
+
+  <Tab title="ReadOnlyValuesViewset">
+    List and retrieve only:
+
+    ```python
+    from kolibri.core.api import ReadOnlyValuesViewset
+
+    class MyViewset(ReadOnlyValuesViewset):
+        # Read-only API
+        pass
+    ```
+  </Tab>
+
+  <Tab title="BaseValuesViewset">
+    Base class with no default actions (for custom viewsets):
+
+    ```python
+    from kolibri.core.api import BaseValuesViewset
+
+    class MyViewset(BaseValuesViewset):
+        # Add custom actions
+        pass
+    ```
+  </Tab>
+</Tabs>
+
+## Models
+
+### Model Conventions
+
+<Note>
+  Follow these conventions when creating models:
+</Note>
+
+```python models.py
+from django.db import models
+from morango.models import UUIDField
+from kolibri.core.fields import DateTimeTzField
+
+class Lesson(models.Model):
+    # Use UUIDField from morango for syncable models
+    id = UUIDField(primary_key=True)
+
+    # Use DateTimeTzField (not Django's DateTimeField)
+    date_created = DateTimeTzField(auto_now_add=True)
+    date_modified = DateTimeTzField(auto_now=True)
+
+    # Regular fields
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=False)
+
+    # Foreign keys
+    collection = models.ForeignKey(
+        'auth.Collection',
+        related_name='lessons',
+        on_delete=models.CASCADE
+    )
+    created_by = models.ForeignKey(
+        'auth.FacilityUser',
+        related_name='created_lessons',
+        on_delete=models.CASCADE
+    )
+
+    class Meta:
+        ordering = ['-date_created']
+
+    def __str__(self):
+        return self.title
+```
+
+**Key conventions:**
+- `UUIDField` from morango for syncable models
+- `DateTimeTzField` for timestamps (not Django's `DateTimeField`)
+- Descriptive `related_name` for foreign keys
+- F-strings for string formatting
+
+### Creating Migrations
+
+When you create or modify models:
+
+```bash
+kolibri manage makemigrations <app_name> --name descriptive_migration_name
+```
+
+<Warning>
+  Always use descriptive migration names. Never use `_auto_` in migration names.
+</Warning>
+
+## Permissions
+
+Kolibri uses `KolibriAuthPermissions` from `kolibri.core.auth.api`:
+
+```python
+from kolibri.core.auth.api import KolibriAuthPermissions
+from kolibri.core.auth.constants import role_kinds
+from kolibri.core.auth.models import Collection
+from rest_framework import permissions
+
+class LessonPermissions(KolibriAuthPermissions):
+    """
+    Permissions for lesson management.
+    """
+
+    def has_permission(self, request, view):
+        # Check if user has coach/admin role
+        if request.method == 'GET':
+            return request.user.is_authenticated
+
+        # For write operations, check role
+        allowed_roles = [role_kinds.ADMIN, role_kinds.COACH]
+        collection_id = request.data.get('collection')
+
+        try:
+            collection = Collection.objects.get(pk=collection_id)
+            return request.user.has_role_for(allowed_roles, collection)
+        except (Collection.DoesNotExist, ValueError):
+            return False
+
+    def has_object_permission(self, request, view, obj):
+        # Check permission for specific lesson
+        allowed_roles = [role_kinds.ADMIN, role_kinds.COACH]
+        return request.user.has_role_for(allowed_roles, obj.collection)
+```
+
+## URL Routing
+
+Register viewsets in `api_urls.py`:
+
+```python api_urls.py
+from django.urls import path, include
+from rest_framework import routers
+from .api import LessonViewset
+
+router = routers.SimpleRouter()
+router.register(r'lesson', LessonViewset, basename='lesson')
+
+urlpatterns = [
+    path('', include(router.urls)),
+]
+```
+
+## Background Tasks
+
+Use Kolibri's task queue for long-running operations:
+
+```python tasks.py
+from kolibri.core.tasks.decorators import register_task
+from kolibri.core.tasks.job import Job
+
+@register_task
+class ImportChannelTask(Job):
+    """
+    Task to import a content channel.
+    """
+
+    def run(self, channel_id):
+        # Update progress
+        self.update_progress(0.1, 1.0)
+
+        # Do work
+        import_channel(channel_id)
+
+        # Update progress
+        self.update_progress(1.0, 1.0)
+
+        return {"channel_id": channel_id}
+```
+
+Enqueue the task:
+
+```python
+from .tasks import ImportChannelTask
+
+# Enqueue task
+job = ImportChannelTask.enqueue(channel_id="abc123")
+```
+
+## Common Patterns
+
+### Querysets with Annotations
+
+```python
+from django.db.models import Count, Q, F
+from kolibri.core.query import annotate_array_aggregate
+
+# Count related objects
+lessons = Lesson.objects.annotate(
+    resource_count=Count('resources')
+)
+
+# Array aggregation (collect IDs into array)
+lessons = annotate_array_aggregate(
+    Lesson.objects.all(),
+    learner_ids="lesson_assignments__collection__membership__user_id"
+)
+
+# Conditional annotations
+lessons = Lesson.objects.annotate(
+    active_count=Count('id', filter=Q(is_active=True))
+)
+```
+
+### Filtering and Prefetching
+
+```python
+# Filter with Q objects
+from django.db.models import Q
+
+lessons = Lesson.objects.filter(
+    Q(is_active=True) & Q(collection__name__icontains="Math")
+)
+
+# Prefetch related objects
+lessons = Lesson.objects.prefetch_related(
+    'lesson_assignments',
+    'lesson_assignments__collection'
+).select_related(
+    'collection',
+    'created_by'
+)
+```
+
+### Custom Queryset Methods
+
+```python models.py
+from django.db import models
+
+class LessonQuerySet(models.QuerySet):
+    def active(self):
+        return self.filter(is_active=True)
+
+    def for_user(self, user):
+        return self.filter(
+            lesson_assignments__collection__membership__user=user
+        ).distinct()
+
+class Lesson(models.Model):
+    # ... fields ...
+
+    objects = LessonQuerySet.as_manager()
+
+# Usage:
+active_lessons = Lesson.objects.active()
+user_lessons = Lesson.objects.for_user(request.user)
+```
+
+## Testing
+
+See the [Testing guide](/guides/testing) for complete details. Key points:
+
+```python test_api.py
+from django.urls import reverse
+from rest_framework import status
+from rest_framework.test import APITestCase
+from .helpers import create_test_facility, create_test_user
+
+class LessonAPITestCase(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.facility = create_test_facility()
+        cls.admin = create_test_user(cls.facility, role="admin")
+
+    def test_list_lessons_requires_authentication(self):
+        """Test that listing lessons requires authentication"""
+        url = reverse('kolibri:core:lesson-list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_admin_can_create_lesson(self):
+        """Test that admin can create a lesson"""
+        self.client.force_authenticate(user=self.admin)
+        url = reverse('kolibri:core:lesson-list')
+        data = {
+            'title': 'New Lesson',
+            'collection': str(self.facility.id),
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use ValuesViewset for all APIs">
+    Unless there's a compelling reason not to, use `ValuesViewset` for performance.
+  </Accordion>
+
+  <Accordion title="Only fetch needed fields">
+    Keep the `values` tuple minimal. Don't fetch fields you won't use.
+  </Accordion>
+
+  <Accordion title="Batch queries in consolidate">
+    Use `__in` lookups on IDs from already-fetched items for efficient batch fetching.
+  </Accordion>
+
+  <Accordion title="Use DateTimeTzField for timestamps">
+    Not Django's `DateTimeField`. This ensures proper timezone handling.
+  </Accordion>
+
+  <Accordion title="Use UUIDField from morango">
+    For models that need to sync across devices.
+  </Accordion>
+
+  <Accordion title="Descriptive migration names">
+    Never use `_auto_` in migration names. Use descriptive names.
+  </Accordion>
+
+  <Accordion title="Profile query performance">
+    Use Django Silk to verify query counts and execution time.
+  </Accordion>
+
+  <Accordion title="F-strings for formatting">
+    Use f-strings for string formatting, not `.format()` or `%`.
+  </Accordion>
+
+  <Accordion title="One import per line">
+    Keep imports readable with one import per line.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Testing Guide" icon="flask" href="/guides/testing">
+    Learn how to write backend tests with pytest
+  </Card>
+  <Card title="Frontend Development" icon="code" href="/guides/frontend-development">
+    Understand the Vue.js frontend
+  </Card>
+  <Card title="Plugin Development" icon="plug" href="/guides/plugin-development">
+    Create your first Kolibri plugin
+  </Card>
+  <Card title="Internationalization" icon="language" href="/guides/internationalization">
+    Internationalize backend strings
+  </Card>
+</CardGroup>

@@ -1,0 +1,487 @@
+---
+title: Permissions & Access Control
+description: Understanding Kolibri's permission system, roles, and access control mechanisms
+---
+
+## Overview
+
+Kolibri implements a comprehensive class-based permission system that controls access to resources based on user roles, facility membership, and object relationships. The permission system is built around collections (facilities, classrooms, learner groups) and roles (admin, coach).
+
+## Permission Architecture
+
+### Core Concepts
+
+**Collections**: Hierarchical organizational units
+- **Facility** - Top-level organization (school, learning center)
+- **Classroom** - Class or course within a facility  
+- **LearnerGroup** - Subset of learners within a classroom
+- **AdHocLearnersGroup** - Temporary group for specific assignments
+
+**Roles**: Define what users can do within collections
+- **Admin** - Full management permissions for a facility
+- **Coach** - Teaching and monitoring permissions for classrooms
+- **Superuser** - Device-level administrator (not facility-specific)
+
+**Memberships**: Define which collections a user belongs to
+- Users can be members of multiple classrooms and groups
+- Membership in a child collection implies membership in parent collections
+
+## Permission Classes
+
+Kolibri uses permission classes that inherit from `BasePermissions`. Each permission class defines CRUD (Create, Read, Update, Delete) operations.
+
+### Base Permission Classes
+
+#### BasePermissions
+
+The foundation class that all permission classes inherit from:
+
+```python
+class BasePermissions:
+    def user_can_create_object(user, obj):
+        """Check if user can create the object"""
+        
+    def user_can_read_object(user, obj):
+        """Check if user can read the object"""
+        
+    def user_can_update_object(user, obj):
+        """Check if user can update the object"""
+        
+    def user_can_delete_object(user, obj):
+        """Check if user can delete the object"""
+        
+    def readable_by_user_filter(user):
+        """Return queryset filter for readable objects"""
+```
+
+#### RoleBasedPermissions
+
+Permissions based on a user's role for a collection:
+
+```python
+RoleBasedPermissions(
+    target_field="collection",
+    can_be_created_by=(role_kinds.ADMIN,),
+    can_be_read_by=(role_kinds.ADMIN, role_kinds.COACH),
+    can_be_updated_by=(role_kinds.ADMIN,),
+    can_be_deleted_by=(role_kinds.ADMIN,),
+)
+```
+
+<ParamField name="target_field" type="string">
+  Field name linking to the role target (user or collection). Use `"."` if the object itself is the target.
+</ParamField>
+
+<ParamField name="can_be_created_by" type="tuple">
+  Tuple of role kinds that can create the object.
+</ParamField>
+
+<ParamField name="can_be_read_by" type="tuple">
+  Tuple of role kinds that can read the object.
+</ParamField>
+
+<ParamField name="can_be_updated_by" type="tuple">
+  Tuple of role kinds that can update the object.
+</ParamField>
+
+<ParamField name="can_be_deleted_by" type="tuple">
+  Tuple of role kinds that can delete the object.
+</ParamField>
+
+### Common Permission Classes
+
+#### DenyAll
+
+Denies all access - useful as a default or for internal-only resources:
+
+```python
+from kolibri.core.auth.permissions.general import DenyAll
+
+class InternalResource:
+    permissions = DenyAll()
+```
+
+#### AllowAll
+
+Allows all access - use with caution, typically for public resources:
+
+```python
+from kolibri.core.auth.permissions.general import AllowAll
+
+class PublicResource:
+    permissions = AllowAll()
+```
+
+#### IsSelf
+
+Only allows access if the object IS the requesting user:
+
+```python
+from kolibri.core.auth.permissions.general import IsSelf
+
+# Read-only access to own user profile
+permissions = IsSelf(read_only=True)
+```
+
+<ParamField name="read_only" type="boolean" default="false">
+  If `true`, only read operations are allowed (no updates/deletes).
+</ParamField>
+
+#### IsOwn
+
+Allows access if the object belongs to the requesting user:
+
+```python
+from kolibri.core.auth.permissions.general import IsOwn
+
+# User can manage their own content
+permissions = IsOwn(field_name="user_id")
+```
+
+<ParamField name="field_name" type="string" default="user_id">
+  Name of the field that foreign keys to the user.
+</ParamField>
+
+<ParamField name="read_only" type="boolean" default="false">
+  If `true`, only read operations are allowed.
+</ParamField>
+
+#### IsAdminForOwnFacility
+
+Allows access if the user is an admin for the facility the object belongs to:
+
+```python
+from kolibri.core.auth.permissions.general import IsAdminForOwnFacility
+
+permissions = IsAdminForOwnFacility()
+```
+
+### Combining Permissions
+
+Permission classes can be combined using `|` (OR) and `&` (AND) operators:
+
+```python
+# User can access if they own it OR are an admin
+permissions = IsOwn(field_name="created_by") | IsAdminForOwnFacility()
+
+# User must be self AND in read-only mode (redundant example)
+permissions = IsSelf() & IsSelf(read_only=True)
+```
+
+## API Permission Enforcement
+
+### KolibriAuthPermissions
+
+The standard DRF permission class used in Kolibri viewsets:
+
+```python
+from kolibri.core.auth.api import KolibriAuthPermissions
+from rest_framework import viewsets
+
+class MyViewSet(viewsets.ModelViewSet):
+    permission_classes = (KolibriAuthPermissions,)
+```
+
+This class:
+1. Checks `user.can_create()` for POST requests
+2. Checks `user.can_read()` for GET requests
+3. Checks `user.can_update()` for PUT/PATCH requests  
+4. Checks `user.can_delete()` for DELETE requests
+
+### KolibriAuthPermissionsFilter
+
+Filter backend that limits querysets to readable objects:
+
+```python
+from kolibri.core.auth.api import KolibriAuthPermissionsFilter
+from django_filters.rest_framework import DjangoFilterBackend
+
+class MyViewSet(viewsets.ModelViewSet):
+    filter_backends = (
+        KolibriAuthPermissionsFilter,  # Apply first
+        DjangoFilterBackend,
+    )
+```
+
+On GET requests, automatically filters the queryset using `user.filter_readable()` to return only objects the user can read.
+
+## Permission Checking in Code
+
+Check permissions programmatically using methods on the user object:
+
+```python
+# Check if user can create an object
+if request.user.can_create(Lesson, validated_data):
+    lesson = Lesson.objects.create(**validated_data)
+
+# Check if user can read an object
+if request.user.can_read(lesson):
+    return lesson
+
+# Check if user can update an object  
+if request.user.can_update(lesson):
+    lesson.title = "New Title"
+    lesson.save()
+
+# Check if user can delete an object
+if request.user.can_delete(lesson):
+    lesson.delete()
+
+# Filter queryset to readable objects
+readable_lessons = request.user.filter_readable(Lesson.objects.all())
+```
+
+## Role Management
+
+### Role Kinds
+
+```python
+from kolibri.core.auth.constants import role_kinds
+
+role_kinds.ADMIN             # Facility administrator
+role_kinds.COACH             # Classroom coach
+role_kinds.ASSIGNABLE_COACH  # Coach that can be assigned to specific resources
+```
+
+### Checking Roles
+
+```python
+# Check if user has a specific role for a collection
+if user.has_role_for_collection(role_kinds.ADMIN, facility):
+    # User is admin for this facility
+    pass
+
+# Check if user has any of multiple roles
+if user.has_role_for(
+    (role_kinds.ADMIN, role_kinds.COACH),
+    classroom
+):
+    # User is admin or coach for this classroom
+    pass
+```
+
+### Role Hierarchy
+
+Roles inherit down the collection hierarchy:
+
+- **Facility Admin** → Can manage everything in the facility (all classrooms, groups, users)
+- **Classroom Coach** → Can manage assigned classroom(s) and learner groups within
+- **No Role (Learner)** → Can only access assigned content and view own progress
+
+## User Types
+
+Kolibri distinguishes between several user types:
+
+```python
+from kolibri.core.auth.constants import user_kinds
+
+user_kinds.ADMIN      # Facility administrator
+user_kinds.COACH      # Coach (classroom level)
+user_kinds.LEARNER    # Regular learner
+user_kinds.SUPERUSER  # Device superuser
+```
+
+### Superuser vs Admin
+
+- **Superuser** (`is_superuser=True`): Device-level administrator
+  - Can manage device settings
+  - Can create/delete facilities
+  - Not tied to a specific facility
+  - Access all facilities on the device
+
+- **Admin** (has admin role): Facility-level administrator  
+  - Can manage users, classes, and content within their facility
+  - Cannot access other facilities
+  - Cannot change device settings
+
+## Permission Scenarios
+
+### Scenario 1: Coach Managing Classroom
+
+```python
+# Coach wants to create a lesson for their classroom
+lesson_data = {
+    'title': 'Math Lesson 1',
+    'collection': classroom,  # Their classroom
+    'created_by': coach_user,
+}
+
+# Permission check (automatic in viewset)
+can_create = coach_user.can_create(Lesson, lesson_data)
+# Returns: True (coach has role for classroom)
+```
+
+### Scenario 2: Learner Accessing Own Progress
+
+```python
+# Learner wants to read their own progress data
+progress = ContentSummaryLog.objects.get(user=learner_user)
+
+can_read = learner_user.can_read(progress)
+# Returns: True (IsOwn permission allows reading own data)
+```
+
+### Scenario 3: Admin Managing Users
+
+```python
+# Admin wants to create a new user in their facility
+user_data = {
+    'username': 'newlearner',
+    'facility': admin_facility,
+}
+
+can_create = admin_user.can_create(FacilityUser, user_data)
+# Returns: True (admin has role for facility)
+```
+
+### Scenario 4: Cross-Facility Access
+
+```python
+# Admin tries to access user from different facility
+other_user = FacilityUser.objects.get(
+    facility=other_facility,
+    username='someone'
+)
+
+can_read = admin_user.can_read(other_user)
+# Returns: False (admin role is facility-specific)
+```
+
+## API Permission Responses
+
+### Success (200/201)
+
+Request permitted and processed successfully.
+
+### Forbidden (403)
+
+User is authenticated but lacks required permissions:
+
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+### Unauthorized (401)
+
+User is not authenticated:
+
+```json
+[
+  {
+    "id": "INVALID_CREDENTIALS",
+    "metadata": {}
+  }
+]
+```
+
+### Not Found (404)
+
+Object doesn't exist OR user lacks read permissions (returns 404 instead of 403 to avoid information leakage).
+
+## Best Practices
+
+### 1. Use Appropriate Permission Classes
+
+Choose the most restrictive permission class that meets your needs:
+
+```python
+# Good: Restrictive by default
+class SensitiveDataViewSet(viewsets.ModelViewSet):
+    permission_classes = (KolibriAuthPermissions,)
+
+# Bad: Too permissive
+class SensitiveDataViewSet(viewsets.ModelViewSet):
+    permission_classes = (AllowAuthenticated,)
+```
+
+### 2. Filter Querysets Properly
+
+Always use permission filters on list endpoints:
+
+```python
+class MyViewSet(viewsets.ModelViewSet):
+    filter_backends = (
+        KolibriAuthPermissionsFilter,  # Critical!
+        DjangoFilterBackend,
+    )
+```
+
+### 3. Check Permissions Before Actions
+
+Explicitly check permissions for custom actions:
+
+```python
+@decorators.action(methods=['post'], detail=True)
+def custom_action(self, request, pk=None):
+    obj = self.get_object()
+    
+    # Explicit permission check
+    if not request.user.can_update(obj):
+        raise PermissionDenied("Cannot perform this action")
+    
+    # Perform action
+    obj.do_something()
+    return Response({'status': 'success'})
+```
+
+### 4. Don't Leak Information
+
+Return 404 instead of 403 when object shouldn't be visible:
+
+```python
+# Good: Hides existence from unauthorized users
+if not user.can_read(obj):
+    raise Http404()
+
+# Bad: Reveals object exists
+if not user.can_read(obj):
+    raise PermissionDenied()
+```
+
+### 5. Test Permission Boundaries
+
+Test permission edge cases:
+
+```python
+def test_coach_cannot_access_other_classroom():
+    """Coach should not access classrooms they don't coach"""
+    other_classroom = ClassroomFactory()
+    response = coach_client.get(f'/api/classroom/{other_classroom.id}/')
+    assert response.status_code == 404  # Not 403!
+```
+
+## Debugging Permissions
+
+When permission checks fail unexpectedly:
+
+1. **Check user roles**: Verify the user has the expected role
+   ```python
+   print(user.roles.values('kind', 'collection_id'))
+   ```
+
+2. **Check collection hierarchy**: Ensure objects are in the correct collection
+   ```python
+   print(f"Object collection: {obj.collection_id}")
+   print(f"User facility: {user.facility_id}")
+   ```
+
+3. **Test permission methods directly**:
+   ```python
+   print(user.can_read(obj))  # True/False
+   print(user.can_update(obj))  # True/False
+   ```
+
+4. **Check filter results**:
+   ```python
+   all_objects = MyModel.objects.all()
+   readable = user.filter_readable(all_objects)
+   print(f"Total: {all_objects.count()}, Readable: {readable.count()}")
+   ```
+
+## Related Documentation
+
+- [Authentication](/api/authentication) - User login and session management
+- Facility Management API - Managing facilities and settings
+- User Management API - CRUD operations on users and roles

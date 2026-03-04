@@ -1,0 +1,273 @@
+---
+title: "Authentication & Users"
+description: "API endpoints for user authentication, facility users, and session management"
+---
+
+## User Authentication
+
+### Create Session (Login)
+
+Authenticate a user and create a new session.
+
+```bash POST /api/auth/session
+curl -X POST http://localhost:8080/api/auth/session \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "learner1",
+    "password": "password123",
+    "facility": "facility-uuid-here"
+  }'
+```
+
+#### Request Parameters
+
+<ParamField body="username" type="string" required>
+  Username of the user to authenticate
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  User's password
+</ParamField>
+
+<ParamField body="facility" type="string" required>
+  UUID of the facility the user belongs to
+</ParamField>
+
+<ParamField body="user_id" type="string">
+  Alternative to username - UUID of the user
+</ParamField>
+
+<ParamField body="auth_token" type="string">
+  Authentication token (used with user_id)
+</ParamField>
+
+#### Response Fields
+
+<ResponseField name="id" type="string">
+  Session identifier (always "current")
+</ResponseField>
+
+<ResponseField name="username" type="string">
+  Authenticated user's username
+</ResponseField>
+
+<ResponseField name="full_name" type="string">
+  User's full name
+</ResponseField>
+
+<ResponseField name="facility" type="string">
+  UUID of the user's facility
+</ResponseField>
+
+<ResponseField name="kind" type="array">
+  Array of user roles/kinds
+</ResponseField>
+
+<ResponseField name="is_superuser" type="boolean">
+  Whether the user has superuser permissions
+</ResponseField>
+
+### Update Session
+
+Update an existing session to keep it alive.
+
+```bash PUT /api/auth/session/current
+curl -X PUT http://localhost:8080/api/auth/session/current \
+  -H "Content-Type: application/json" \
+  -d '{
+    "active": true
+  }'
+```
+
+### Delete Session (Logout)
+
+End the current user session.
+
+```bash DELETE /api/auth/session/current
+curl -X DELETE http://localhost:8080/api/auth/session/current
+```
+
+## Facility Users
+
+### List Facility Users
+
+Retrieve a list of facility users with filtering and search capabilities.
+
+```bash GET /api/auth/facilityuser
+curl http://localhost:8080/api/auth/facilityuser?member_of=classroom-uuid
+```
+
+#### Query Parameters
+
+<ParamField query="member_of" type="string">
+  Filter users by collection (classroom or facility) membership
+</ParamField>
+
+<ParamField query="user_type" type="string">
+  Filter by user type: `learner`, `coach`, `admin`, `superuser`
+</ParamField>
+
+<ParamField query="search" type="string">
+  Search by username or full name
+</ParamField>
+
+<ParamField query="page_size" type="integer">
+  Number of results per page
+</ParamField>
+
+<ParamField query="page" type="integer">
+  Page number for pagination
+</ParamField>
+
+#### Response Fields
+
+<ResponseField name="id" type="string">
+  User's unique identifier
+</ResponseField>
+
+<ResponseField name="username" type="string">
+  User's username
+</ResponseField>
+
+<ResponseField name="full_name" type="string">
+  User's full name
+</ResponseField>
+
+<ResponseField name="facility" type="string">
+  UUID of the user's facility
+</ResponseField>
+
+<ResponseField name="roles" type="array">
+  Array of role objects with collection, kind, and id
+</ResponseField>
+
+<ResponseField name="is_superuser" type="boolean">
+  Whether user has superuser permissions
+</ResponseField>
+
+<ResponseField name="gender" type="string">
+  User's gender
+</ResponseField>
+
+<ResponseField name="birth_year" type="string">
+  User's birth year
+</ResponseField>
+
+<ResponseField name="date_joined" type="string">
+  ISO 8601 timestamp of when user joined
+</ResponseField>
+
+### Get Facility User
+
+Retrieve details of a specific facility user.
+
+```bash GET /api/auth/facilityuser/:id
+curl http://localhost:8080/api/auth/facilityuser/user-uuid-here
+```
+
+### Create Facility User
+
+Create a new facility user.
+
+```bash POST /api/auth/facilityuser
+curl -X POST http://localhost:8080/api/auth/facilityuser \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "newlearner",
+    "full_name": "New Learner",
+    "password": "password123",
+    "facility": "facility-uuid-here"
+  }'
+```
+
+#### Request Parameters
+
+<ParamField body="username" type="string" required>
+  Unique username for the user
+</ParamField>
+
+<ParamField body="full_name" type="string" required>
+  User's full name
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  User's password
+</ParamField>
+
+<ParamField body="facility" type="string" required>
+  UUID of the facility
+</ParamField>
+
+<ParamField body="gender" type="string">
+  User's gender
+</ParamField>
+
+<ParamField body="birth_year" type="string">
+  User's birth year
+</ParamField>
+
+### Update Facility User
+
+Update an existing facility user.
+
+```bash PATCH /api/auth/facilityuser/:id
+curl -X PATCH http://localhost:8080/api/auth/facilityuser/user-uuid-here \
+  -H "Content-Type: application/json" \
+  -d '{
+    "full_name": "Updated Name"
+  }'
+```
+
+### Delete Facility User
+
+Soft delete a facility user (marks as deleted, doesn't remove from database).
+
+```bash DELETE /api/auth/facilityuser/:id
+curl -X DELETE http://localhost:8080/api/auth/facilityuser/user-uuid-here
+```
+
+## User Sign Up
+
+### Sign Up New User
+
+Allow users to self-register if facility settings permit.
+
+```bash POST /api/auth/signup
+curl -X POST http://localhost:8080/api/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "newuser",
+    "full_name": "New User",
+    "password": "password123",
+    "facility": "facility-uuid-here"
+  }'
+```
+
+## Username Availability
+
+### Check Username
+
+Check if a username is available in a facility.
+
+```bash POST /api/auth/usernameavailable
+curl -X POST http://localhost:8080/api/auth/usernameavailable \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "testuser",
+    "facility": "facility-uuid-here"
+  }'
+```
+
+#### Request Parameters
+
+<ParamField body="username" type="string" required>
+  Username to check
+</ParamField>
+
+<ParamField body="facility" type="string" required>
+  Facility UUID to check within
+</ParamField>
+
+#### Response
+
+Returns `true` if username is available, or error array if already exists.

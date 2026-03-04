@@ -1,0 +1,244 @@
+---
+title: Deployment Overview
+description: Deployment options, infrastructure requirements, and distribution methods for Kolibri
+---
+
+Kolibri offers multiple deployment options to support diverse infrastructure scenarios, from resource-constrained environments to production server deployments.
+
+## Distribution Methods
+
+Kolibri is distributed through several package formats, each optimized for different deployment scenarios:
+
+### PyPI Packages
+
+Kolibri is available on PyPI in two variants:
+
+<CodeGroup>
+```bash Online Dependencies
+# Standard package with online dependency resolution
+pip install kolibri
+```
+
+```bash Bundled Dependencies
+# Static package with all dependencies bundled
+pip install kolibri-static
+```
+</CodeGroup>
+
+The `kolibri-static` package is ideal for offline installations and serves as the foundation for platform-specific installers.
+
+### Platform-Specific Installers
+
+Built from the `kolibri-static` package:
+
+- **Windows Installer** - Native Windows .exe installer
+- **Debian Package** - .deb installer for Debian/Ubuntu systems
+- **Android APK** - Mobile app for Android devices
+- **PEX File** - Portable executable for cross-platform deployment
+
+### Docker Deployment
+
+Docker images are available for containerized deployments. See the [docker/readme.md](https://github.com/learningequality/kolibri/tree/develop/docker) in the source repository.
+
+## Infrastructure Requirements
+
+### System Requirements
+
+<CardGroup cols={2}>
+  <Card title="Python Version" icon="python">
+    Python 3.6 through 3.13 supported
+  </Card>
+  <Card title="Memory" icon="memory">
+    Minimum 2GB RAM recommended
+  </Card>
+  <Card title="Disk Space" icon="hard-drive">
+    Minimum 250MB free (configurable via `MINIMUM_DISK_SPACE`)
+  </Card>
+  <Card title="Network" icon="network-wired">
+    Optional - designed for offline operation
+  </Card>
+</CardGroup>
+
+### Database Options
+
+Kolibri supports two database backends:
+
+**SQLite** (Default)
+- Suitable for most deployments
+- No additional setup required
+- File-based database stored in `KOLIBRI_HOME`
+- Uses custom backend with `BEGIN IMMEDIATE` transactions
+
+**PostgreSQL** (Production)
+- Recommended for high-concurrency environments
+- Requires PostgreSQL server
+- Better performance under heavy load
+- See [Production Deployment](/deployment/production) for setup details
+
+### Thread Pool Configuration
+
+Kolibri automatically calculates optimal thread pool size based on available resources:
+
+```python
+# From kolibri/utils/options.py
+MIN_POOL = 50
+MAX_POOL = 150
+
+# Scales linearly with RAM between 2GB and 6GB
+# Constrained by file descriptor limits
+max_threads = (fd_limit - MIN_RESERVED_FD) // FD_PER_THREAD
+```
+
+Thread pool size can be manually configured via environment variables if needed.
+
+## Build Pipeline
+
+The Kolibri build pipeline produces multiple distribution formats:
+
+```
+Git release branch
+        |
+        |
+       / \
+      /   \
+     /     \
+PyPI        PyPI Static
+(kolibri)   (kolibri-static)
+              |
+              +-- Windows Installer
+              +-- Android APK
+              +-- Debian Package
+              +-- PEX File
+```
+
+### Building from Source
+
+<Steps>
+  <Step title="Build Distribution">
+    The `make dist` command creates distributable packages:
+
+    ```bash
+    make dist
+    ```
+
+    This command:
+    - Sets requirements with customized versions
+    - Writes version information to `kolibri/VERSION`
+    - Downloads static Python dependencies to `kolibri/dist/`
+    - Downloads platform-specific C extensions
+    - Strips debug symbols from binaries
+    - Builds frontend assets
+    - Compiles translation messages
+    - Creates wheel and source distributions in `dist/`
+  </Step>
+
+  <Step title="Build PEX (Optional)">
+    Create portable Python executables:
+
+    ```bash
+    make pex
+    ```
+
+    Generates `.pex` files from wheel files in `dist/` directory.
+  </Step>
+</Steps>
+
+## Configuration Options
+
+### Environment Variables
+
+Kolibri configuration is managed through environment variables with the `KOLIBRI_` prefix:
+
+<AccordionGroup>
+  <Accordion title="Core Settings">
+    - `KOLIBRI_HOME` - Data directory (required)
+    - `KOLIBRI_HTTP_PORT` - Server port (default: 8080)
+    - `KOLIBRI_RUN_MODE` - Deployment mode flag
+    - `KOLIBRI_NO_FILE_BASED_LOGGING` - Disable file logging
+  </Accordion>
+
+  <Accordion title="Database Settings">
+    - `KOLIBRI_DATABASE_ENGINE` - `sqlite` or `postgres`
+    - `KOLIBRI_DATABASE_NAME` - Database name
+    - `KOLIBRI_DATABASE_USER` - PostgreSQL username
+    - `KOLIBRI_DATABASE_PASSWORD` - PostgreSQL password
+    - `KOLIBRI_DATABASE_HOST` - PostgreSQL host
+    - `KOLIBRI_DATABASE_PORT` - PostgreSQL port
+  </Accordion>
+
+  <Accordion title="Content & Paths">
+    - `KOLIBRI_CONTENT_DIR` - Content storage directory
+    - `KOLIBRI_CONTENT_FALLBACK_DIRS` - Additional content directories
+    - `KOLIBRI_CENTRAL_CONTENT_BASE_URL` - Content import source
+  </Accordion>
+
+  <Accordion title="Deployment Options">
+    - `KOLIBRI_URL_PATH_PREFIX` - Serve from subpath
+    - `KOLIBRI_ZIP_CONTENT_PORT` - Alternate origin port
+    - `KOLIBRI_LANGUAGES` - Enabled UI languages
+    - `KOLIBRI_DISABLE_PING` - Disable telemetry
+  </Accordion>
+</AccordionGroup>
+
+### Configuration File
+
+Settings can also be configured via `options.ini` file in `KOLIBRI_HOME`:
+
+```ini
+[Server]
+CHERRYPY_THREAD_POOL = 100
+DEBUG = False
+
+[Database]
+DATABASE_ENGINE = postgres
+DATABASE_NAME = kolibri
+DATABASE_USER = kolibri_user
+DATABASE_HOST = localhost
+DATABASE_PORT = 5432
+
+[Deployment]
+HTTP_PORT = 8080
+URL_PATH_PREFIX = /
+LANGUAGES = en,es-es,fr-fr
+
+[Paths]
+CONTENT_DIR = content
+```
+
+## KOLIBRI_HOME Directory
+
+All runtime data is stored in `KOLIBRI_HOME` (defaults to `~/.kolibri`):
+
+```
+KOLIBRI_HOME/
+├── db.sqlite3              # Main database (SQLite)
+├── sessions.sqlite3        # Session data
+├── notifications.sqlite3   # Notifications
+├── job_storage.sqlite3     # Background jobs
+├── networklocations.sqlite3 # Peer discovery
+├── content/                # Content files and databases
+├── logs/                   # Application logs
+├── static/                 # Static assets (production)
+└── options.ini             # Configuration file
+```
+
+<Note>
+  The `KOLIBRI_HOME` directory must be writable by the user running Kolibri. Ensure proper permissions when deploying as a system service.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Production Deployment" icon="server" href="/deployment/production">
+    Configure PostgreSQL and production settings
+  </Card>
+  <Card title="Android Deployment" icon="mobile" href="/deployment/android">
+    Build and distribute Android APK
+  </Card>
+  <Card title="Offline Setup" icon="wifi-slash" href="/deployment/offline-setup">
+    Deploy in network-free environments
+  </Card>
+  <Card title="Docker" icon="docker" href="https://github.com/learningequality/kolibri/tree/develop/docker">
+    Container-based deployment
+  </Card>
+</CardGroup>

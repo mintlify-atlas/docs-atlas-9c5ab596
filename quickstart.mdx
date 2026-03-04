@@ -1,80 +1,411 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick Start
+description: Get Kolibri running locally for development in under 15 minutes
 ---
 
-## Get started in three steps
+## Prerequisites
 
-Get your documentation site running locally and make your first customization.
+Before you begin, ensure you have:
 
-### Step 1: Set up your local environment
+- **Git** with [Git LFS](https://docs.github.com/en/repositories/working-with-files/managing-large-files/installing-git-large-file-storage) installed
+- **Python 3.9+** (but below 3.14) - we recommend using [pyenv](https://github.com/pyenv/pyenv)
+- **Node.js 20.19.x** - installed via nodeenv (shown below)
+- **Terminal/Command Line** access
+
+<Warning>
+  Direct development on Windows is not supported. If you're using Windows, set up your development environment using **WSL (Windows Subsystem for Linux)**.
+</Warning>
+
+## Quick Setup
+
+Follow these steps to get Kolibri running locally:
+
+<Steps>
+  <Step title="Fork and Clone the Repository">
+    First, [fork the Kolibri repository](https://github.com/learningequality/kolibri/fork) on GitHub, then clone your fork:
+
+    ```bash
+    # Replace $USERNAME with your GitHub username
+    git clone git@github.com:$USERNAME/kolibri.git
+    cd kolibri
+    ```
+
+    Initialize Git LFS and configure git blame:
+
+    ```bash
+    git lfs install
+    git config blame.ignoreRevsFile .git-blame-ignore-revs
+    ```
+
+    Add the upstream remote to track Learning Equality's repository:
+
+    ```bash
+    git remote add upstream git@github.com:learningequality/kolibri.git
+    git fetch --all
+    git checkout -t upstream/develop
+    ```
+  </Step>
+
+  <Step title="Set Up Python Virtual Environment">
+    Create and activate a virtual environment using pyenv-virtualenv:
+
+    ```bash
+    # Create a virtual environment (using Python 3.9.9 as example)
+    pyenv virtualenv 3.9.9 kolibri-py3.9
+
+    # Activate the virtual environment
+    pyenv activate kolibri-py3.9
+    ```
+
+    <Note>
+      If you don't have pyenv installed, see the [full installation guide](/installation) for alternative methods like venv, virtualenv, or pipenv.
+    </Note>
+  </Step>
+
+  <Step title="Set Required Environment Variable">
+    Set the `KOLIBRI_RUN_MODE` environment variable (required for development):
+
+    ```bash
+    export KOLIBRI_RUN_MODE="dev"
+    ```
+
+    <Note>
+      Add this to your `~/.bash_profile` or `~/.zshrc` to make it permanent:
+      ```bash
+      echo 'export KOLIBRI_RUN_MODE="dev"' >> ~/.bash_profile
+      ```
+    </Note>
+
+    This variable:
+    - Filters your development work out of usage statistics
+    - Enables special testing behaviors
+    - Must be set to a non-empty string
+  </Step>
+
+  <Step title="Install Python Dependencies">
+    Install all required Python packages:
+
+    ```bash
+    pip install -r requirements.txt --upgrade
+    pip install -r requirements/dev.txt --upgrade
+    pip install -e .
+    ```
+
+    This installs:
+    - Django 3.2.25 and Django REST Framework
+    - Morango (synchronization framework)
+    - Development tools (pre-commit, tox, ipdb)
+    - All other dependencies from `requirements/base.txt`
+  </Step>
+
+  <Step title="Install Node.js and JavaScript Dependencies">
+    Use nodeenv (installed with Python dependencies) to set up Node.js:
+
+    ```bash
+    # Install Node.js 20.19.0 in the Python virtual environment
+    nodeenv -p --node=20.19.0
+
+    # Install pnpm globally
+    npm install -g pnpm
+
+    # Install JavaScript dependencies
+    pnpm install
+    ```
+
+    This sets up:
+    - Webpack build system
+    - Vue.js and related frontend libraries
+    - Jest testing framework
+    - Development tools (ESLint, Prettier, etc.)
+  </Step>
+
+  <Step title="Set Up Pre-commit Hooks">
+    Enable pre-commit hooks to ensure code quality:
+
+    ```bash
+    pre-commit install
+    ```
+
+    <Warning>
+      Pre-commit hooks are **strongly recommended**. They catch the same issues that CI checks will flag, saving you time on pull requests.
+    </Warning>
+
+    The hooks automatically:
+    - Format Python code with Black
+    - Format JavaScript/Vue with Prettier
+    - Run linters (Flake8, ESLint, Stylelint)
+    - Check for common errors
+  </Step>
+
+  <Step title="Initialize the Database">
+    Create the SQLite database and run migrations:
+
+    ```bash
+    kolibri manage migrate
+    ```
+
+    You should see output showing migrations being applied:
+
+    ```
+    Running migrations:
+      Applying contenttypes.0001_initial... OK
+      Applying auth.0001_initial... OK
+      Applying kolibriauth.0001_initial... OK
+      ...
+    ```
+  </Step>
+
+  <Step title="Start the Development Server">
+    Launch both the Django backend and webpack frontend server:
+
+    ```bash
+    pnpm run devserver
+    ```
+
+    This single command:
+    - Starts the Django development server on port 8000
+    - Runs webpack in watch mode to build frontend assets
+    - Auto-reloads when you make code changes
+
+    <Note>
+      The first build takes several minutes as webpack compiles all frontend assets. Subsequent rebuilds are much faster.
+    </Note>
+
+    Once you see:
+    ```
+    Kolibri running on: http://127.0.0.1:8000/
+    ```
+
+    Open your browser to **http://127.0.0.1:8000/**
+  </Step>
+
+  <Step title="Import Sample Content (Optional)">
+    To test with real educational content, import the Kolibri QA channel:
+
+    In the web interface:
+    1. Complete the setup wizard
+    2. Navigate to **Device > Channels**
+    3. Click **Import with token**
+    4. Enter token: `nakav-mafak`
+    5. Select resources and import (~350MB)
+
+    Or generate sample users programmatically:
+
+    ```bash
+    kolibri manage generateuserdata
+    ```
+
+    This creates test users, classes, and assignments for development.
+  </Step>
+</Steps>
+
+## Verify Your Setup
+
+To confirm everything is working:
+
+<CodeGroup>
+```bash Python Tests
+# Run a quick Python test
+pytest kolibri/core/auth/test/test_permissions.py -k test_admin_can_delete_membership
+```
+
+```bash JavaScript Tests
+# Run a quick frontend test
+pnpm run test-jest -- kolibri/core/auth/test/test_app.spec.js
+```
+
+```bash Linting
+# Run pre-commit checks
+pre-commit run --all-files
+```
+</CodeGroup>
+
+If all tests pass, you're ready to start developing!
+
+## Development Workflow
+
+### Running the Dev Server
+
+Choose the command that fits your workflow:
+
+```bash
+# Full devserver (Django + webpack watch)
+pnpm run devserver
+
+# With hot module replacement (faster rebuilds)
+pnpm run devserver-hot
+
+# Watch only specific plugins (faster, uses less resources)
+pnpm run devserver-hot learn  # Only rebuild the Learn plugin
+pnpm run devserver core,learn  # Rebuild core and Learn plugin
+```
+
+<Warning>
+  Hot reload mode breaks some functionality like right-to-left language support. Use regular `devserver` for testing RTL languages.
+</Warning>
+
+### Running Separate Servers
+
+For backend-focused work, build frontend once then run Django alone:
+
+```bash
+# Terminal 1: Build frontend assets once
+pnpm run build
+
+# Terminal 2: Run Django devserver
+pnpm run python-devserver
+```
+
+Or run them in separate terminals for full control:
+
+```bash
+# Terminal 1: Django server
+pnpm run python-devserver
+
+# Terminal 2: Webpack watcher
+pnpm run watch
+```
+
+### Testing
+
+<Tabs>
+  <Tab title="Python">
+    ```bash
+    # Run all tests
+    pytest
+
+    # Run specific test file
+    pytest kolibri/core/auth/test/test_permissions.py
+
+    # Run specific test by name
+    pytest kolibri/core/auth/test/ -k test_admin_can_delete
+
+    # Run with coverage
+    pytest --cov=kolibri
+    ```
+  </Tab>
+
+  <Tab title="JavaScript">
+    ```bash
+    # Run all tests
+    pnpm run test-jest
+
+    # Watch mode (re-run on changes)
+    pnpm run test
+
+    # Run specific file
+    pnpm run test-jest -- path/to/file.spec.js
+
+    # Run tests matching pattern
+    pnpm run test-jest -- --testPathPattern learn
+
+    # With coverage
+    pnpm run test-jest-cov
+    ```
+  </Tab>
+
+  <Tab title="Linting">
+    ```bash
+    # Run all pre-commit checks
+    pre-commit run --all-files
+
+    # Lint and format frontend code
+    pnpm run lint-frontend:format
+
+    # Check frontend without writing changes
+    pnpm run lint-frontend
+    ```
+  </Tab>
+</Tabs>
+
+## Common Issues and Solutions
 
 <AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
+  <Accordion title="Pre-commit hooks fail on first commit">
+    This is expected! Pre-commit auto-fixes many issues:
+
+    1. Review the changes pre-commit made
+    2. Stage the fixed files: `git add <files>`
+    3. Commit again: `git commit -m "Your message"`
+
+    The commit will succeed once all checks pass.
   </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
+
+  <Accordion title="'Node Sass could not find a binding' error">
+    Rebuild node-sass for your current environment:
+
+    ```bash
+    npm rebuild node-sass
+    ```
+  </Accordion>
+
+  <Accordion title="Port 8000 already in use">
+    Another Kolibri instance or process is using port 8000:
+
+    ```bash
+    # Find the process
+    lsof -i :8000
+
+    # Kill it (use PID from above)
+    kill -9 <PID>
+
+    # Or use a different port
+    kolibri start --port=8001
+    ```
+  </Accordion>
+
+  <Accordion title="Database migrations fail">
+    Try resetting your database (development only!):
+
+    ```bash
+    # Find your KOLIBRI_HOME
+    kolibri manage shell -c "from kolibri.utils.conf import KOLIBRI_HOME; print(KOLIBRI_HOME)"
+
+    # Remove the database
+    rm $KOLIBRI_HOME/db.sqlite3
+
+    # Re-run migrations
+    kolibri manage migrate
+    ```
+  </Accordion>
+
+  <Accordion title="Frontend build is very slow">
+    Limit which plugins are built:
+
+    ```bash
+    # Only build/watch Learn plugin
+    pnpm run devserver learn
+
+    # Build multiple specific plugins
+    pnpm run devserver learn,coach,facility
+    ```
+
+    This significantly reduces build time and memory usage.
   </Accordion>
 </AccordionGroup>
 
-### Step 2: Deploy your changes
+## Next Steps
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
+Now that you have Kolibri running:
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Architecture Overview" icon="sitemap" href="/concepts/architecture">
+    Understand Kolibri's technical design
+  </Card>
+  <Card title="Contributing Guide" icon="code" href="/contributing/overview">
+    Learn the development workflow
+  </Card>
+  <Card title="Testing Guide" icon="vial" href="/guides/testing">
+    Write and run tests
+  </Card>
+  <Card title="Design System" icon="palette" href="https://design-system.learningequality.org/" target="_blank">
+    Explore reusable UI components
+  </Card>
 </CardGroup>
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+## Additional Resources
+
+- **Developer Docs**: Full documentation at [kolibri-dev.readthedocs.io](http://kolibri-dev.readthedocs.io/)
+- **Community Forums**: [community.learningequality.org](https://community.learningequality.org/)
+- **GitHub Issues**: [github.com/learningequality/kolibri/issues](https://github.com/learningequality/kolibri/issues)
+- **Code Quality Guidelines**: See `docs/code_quality.rst` in the repository

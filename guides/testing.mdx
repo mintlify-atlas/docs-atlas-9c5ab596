@@ -1,0 +1,628 @@
+---
+title: Testing Guide
+description: Writing tests with pytest, Jest, and Test-Driven Development practices in Kolibri
+---
+
+## Overview
+
+Kolibri uses comprehensive testing for both frontend and backend code. **Testing is required for all code contributions.**
+
+## Testing Stack
+
+- **Backend**: pytest with Django test integration
+- **Frontend**: Jest with Vue Testing Library
+- **TDD**: Test-Driven Development is strongly encouraged
+
+## Test-Driven Development (TDD)
+
+We encourage using Test-Driven Development with the **Red/Green/Refactor** cycle:
+
+<Steps>
+  <Step title="Red: Write a Failing Test">
+    Write a test that describes the desired behavior. Run it - it should fail.
+  </Step>
+
+  <Step title="Green: Make it Pass">
+    Write the minimum code needed to make the test pass.
+  </Step>
+
+  <Step title="Refactor: Clean Up">
+    Improve the code while keeping tests passing.
+  </Step>
+</Steps>
+
+<Note>
+  **When to use TDD:**
+  - **Bug fixes**: Always write a failing test first to reproduce the bug
+  - **New features**: Build incrementally by writing tests for each component
+  - **Refactoring**: Ensure existing tests pass before and after
+</Note>
+
+### TDD Example: Bug Fix
+
+Let's fix a bug where users can't update their own profile:
+
+**Step 1 - Red: Write a failing test**
+
+```python test_api.py
+from django.urls import reverse
+from rest_framework import status
+from rest_framework.test import APITestCase
+from .helpers import create_test_user, create_test_facility
+
+class UserProfileTestCase(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.facility = create_test_facility()
+        cls.user = create_test_user(cls.facility)
+
+    def test_user_can_update_own_profile(self):
+        """Test that user can update their own full name"""
+        self.client.force_authenticate(user=self.user)
+        url = reverse('kolibri:core:facilityuser-detail',
+                     kwargs={'pk': self.user.id})
+        response = self.client.patch(url, {'full_name': 'New Name'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.full_name, 'New Name')
+```
+
+Run the test - it should fail, confirming the bug exists:
+
+```bash
+pytest kolibri/core/auth/test/test_api.py::UserProfileTestCase::test_user_can_update_own_profile
+```
+
+**Step 2 - Green: Fix the code**
+
+```python api.py
+from kolibri.core.auth.api import KolibriAuthPermissions
+
+class UserViewSet(ValuesViewset):
+    def get_permissions(self):
+        if self.action == 'partial_update':
+            # Allow users to update their own profile
+            return [IsAuthenticated()]
+        return super().get_permissions()
+```
+
+Run the test again - it should now pass:
+
+```bash
+pytest kolibri/core/auth/test/test_api.py::UserProfileTestCase::test_user_can_update_own_profile
+```
+
+**Step 3 - Refactor: Clean up if needed**
+
+Review the fix and ensure it's clean and maintainable. Run all tests to ensure nothing else broke.
+
+## Backend Testing (Python)
+
+### Running Backend Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run specific file
+pytest kolibri/core/auth/test/test_api.py
+
+# Run specific test
+pytest kolibri/core/auth/test/test_permissions.py -k test_admin_can_delete_membership
+
+# Run specific test class
+pytest kolibri/core/auth/test/test_permissions.py -k MembershipPermissionsTestCase
+
+# Run with verbose output
+pytest -v
+
+# Run with code coverage
+pytest --cov=kolibri
+```
+
+### Backend Test Structure
+
+Tests live in `test/` directories:
+
+```
+kolibri/core/auth/
+├── models.py
+├── api.py
+└── test/
+    ├── __init__.py
+    ├── helpers.py           # Test utilities
+    ├── test_models.py       # Model tests
+    ├── test_api.py          # API tests
+    └── test_permissions.py  # Permission tests
+```
+
+### Django TestCase
+
+For Django code (models, views, API endpoints):
+
+```python test_models.py
+from django.test import TestCase
+from ..models import Facility, FacilityUser
+
+class FacilityTestCase(TestCase):
+    """Tests for Facility model"""
+
+    @classmethod
+    def setUpTestData(cls):
+        """Set up data for the whole TestCase - runs once"""
+        cls.facility = Facility.objects.create(name="Test Facility")
+        cls.user = FacilityUser.objects.create(
+            username="testuser",
+            facility=cls.facility
+        )
+
+    def test_facility_has_name(self):
+        """Test that facility has a name"""
+        self.assertEqual(self.facility.name, "Test Facility")
+
+    def test_user_belongs_to_facility(self):
+        """Test that user belongs to facility"""
+        self.assertEqual(self.user.facility, self.facility)
+```
+
+<Note>
+  Use `setUpTestData` for data that doesn't change between tests. It runs once per TestCase, making tests faster.
+</Note>
+
+### Testing API Endpoints
+
+```python test_api.py
+from django.urls import reverse
+from rest_framework import status
+from rest_framework.test import APITestCase
+from .helpers import create_test_facility, create_test_user
+
+class LessonAPITestCase(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.facility = create_test_facility()
+        cls.admin = create_test_user(cls.facility, role="admin")
+        cls.learner = create_test_user(cls.facility, username="learner")
+
+    def test_list_requires_authentication(self):
+        """Test that listing lessons requires authentication"""
+        url = reverse('kolibri:core:lesson-list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_admin_can_create_lesson(self):
+        """Test that admin can create a lesson"""
+        self.client.force_authenticate(user=self.admin)
+        url = reverse('kolibri:core:lesson-list')
+        data = {
+            'title': 'Math Lesson',
+            'collection': str(self.facility.id),
+        }
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['title'], 'Math Lesson')
+
+    def test_learner_cannot_create_lesson(self):
+        """Test that learner cannot create lessons"""
+        self.client.force_authenticate(user=self.learner)
+        url = reverse('kolibri:core:lesson-list')
+        data = {'title': 'Test'}
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+```
+
+<Tip>
+  Always use `reverse()` to generate URLs. Never hard-code URLs like `/api/lesson/`.
+</Tip>
+
+### Testing Pure Python Code
+
+For utility functions with no Django dependencies:
+
+```python test_utils.py
+import pytest
+from ..utils import calculate_progress, format_duration
+
+def test_calculate_progress():
+    """Test progress calculation"""
+    assert calculate_progress(50, 100) == 50.0
+    assert calculate_progress(0, 100) == 0.0
+    assert calculate_progress(100, 100) == 100.0
+
+def test_calculate_progress_with_zero_total():
+    """Test that zero total raises ValueError"""
+    with pytest.raises(ValueError):
+        calculate_progress(50, 0)
+
+def test_format_duration():
+    """Test duration formatting"""
+    assert format_duration(90) == "1:30"
+    assert format_duration(3661) == "1:01:01"
+```
+
+### Using Helper Functions
+
+Create reusable helpers in `test/helpers.py`:
+
+```python helpers.py
+from kolibri.core.auth.models import Facility, FacilityUser
+
+DUMMY_PASSWORD = "password"
+
+def create_test_facility(name="Test Facility"):
+    """Create a test facility"""
+    return Facility.objects.create(name=name)
+
+def create_test_user(facility, username="testuser", role=None):
+    """Create a test user in a facility"""
+    user = FacilityUser.objects.create(
+        username=username,
+        facility=facility
+    )
+    user.set_password(DUMMY_PASSWORD)
+    user.save()
+    return user
+```
+
+Use in tests:
+
+```python
+from .helpers import create_test_facility, create_test_user, DUMMY_PASSWORD
+
+class MyTestCase(TestCase):
+    def setUp(self):
+        self.facility = create_test_facility()
+        self.user = create_test_user(self.facility)
+```
+
+## Frontend Testing (JavaScript)
+
+### Running Frontend Tests
+
+```bash
+# Run all tests
+pnpm run test
+
+# Run specific file
+pnpm run test-jest -- path/to/MyComponent.spec.js
+
+# Run tests matching a pattern
+pnpm run test-jest -- --testPathPattern learn
+
+# Run in watch mode
+pnpm run test-jest -- --watch
+
+# Run with coverage
+pnpm run test-jest -- --coverage
+```
+
+### Frontend Test Structure
+
+Tests live in `__tests__/` directories:
+
+```
+frontend/
+├── views/
+│   ├── __tests__/
+│   │   └── HomePage.spec.js
+│   └── HomePage.vue
+└── composables/
+    ├── __tests__/
+    │   └── useCounter.spec.js
+    └── useCounter.js
+```
+
+### Testing Vue Components
+
+Use Vue Testing Library for all new tests:
+
+```javascript HomePage.spec.js
+import { render, screen } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
+import HomePage from '../HomePage.vue';
+
+describe('HomePage', () => {
+  it('renders the page title', () => {
+    render(HomePage);
+    expect(screen.getByText('Welcome to Kolibri')).toBeTruthy();
+  });
+
+  it('shows loading state while fetching data', async () => {
+    render(HomePage);
+    expect(screen.getByRole('progressbar')).toBeTruthy();
+  });
+
+  it('handles button click', async () => {
+    const user = userEvent.setup();
+    render(HomePage);
+
+    const button = screen.getByRole('button', { name: 'Load data' });
+    await user.click(button);
+
+    expect(screen.getByText('Data loaded')).toBeTruthy();
+  });
+});
+```
+
+<Warning>
+  **Do NOT import** `describe`, `it`, or `expect` - they are Jest globals. **Do NOT use** `vitest` or `@vue/test-utils`.
+</Warning>
+
+### renderComponent Helper Pattern
+
+Create a `renderComponent` helper to avoid boilerplate:
+
+```javascript
+import { render } from '@testing-library/vue';
+
+// Helper function to render with common setup
+const renderComponent = (props = {}) => {
+  const { store = {}, ...componentProps } = props;
+
+  return render(LessonCard, {
+    props: componentProps,
+    store: {
+      getters: {
+        isAdmin: () => store.isAdmin ?? false,
+        currentUserId: () => store.currentUserId ?? 'user-01',
+      },
+    },
+  });
+};
+
+describe('LessonCard', () => {
+  it('renders lesson title', () => {
+    renderComponent({
+      title: 'Math Lesson',
+      isActive: true,
+    });
+
+    expect(screen.getByText('Math Lesson')).toBeTruthy();
+  });
+
+  it('shows admin actions for admin users', () => {
+    renderComponent({
+      title: 'Math Lesson',
+      store: { isAdmin: true },
+    });
+
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeTruthy();
+  });
+});
+```
+
+### Testing Composables
+
+```javascript useCounter.spec.js
+import { ref } from 'vue';
+import useCounter from '../useCounter';
+
+describe('useCounter', () => {
+  it('initializes with default value', () => {
+    const { count } = useCounter();
+    expect(count.value).toBe(0);
+  });
+
+  it('initializes with custom value', () => {
+    const { count } = useCounter(10);
+    expect(count.value).toBe(10);
+  });
+
+  it('increments count', () => {
+    const { count, increment } = useCounter();
+    increment();
+    expect(count.value).toBe(1);
+  });
+
+  it('decrements count', () => {
+    const { count, decrement } = useCounter(5);
+    decrement();
+    expect(count.value).toBe(4);
+  });
+
+  it('computes doubled value', () => {
+    const { count, doubled, increment } = useCounter(3);
+    expect(doubled.value).toBe(6);
+    increment();
+    expect(doubled.value).toBe(8);
+  });
+});
+```
+
+### Mocking API Calls
+
+```javascript
+import { render, screen, waitFor } from '@testing-library/vue';
+import { LessonResource } from '../apiResources';
+import LessonList from '../LessonList.vue';
+
+// Mock the resource
+jest.mock('../apiResources', () => ({
+  LessonResource: {
+    fetchCollection: jest.fn(),
+  },
+}));
+
+describe('LessonList', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('displays lessons after loading', async () => {
+    LessonResource.fetchCollection.mockResolvedValue([
+      { id: '1', title: 'Math Lesson' },
+      { id: '2', title: 'Science Lesson' },
+    ]);
+
+    render(LessonList);
+
+    await waitFor(() => {
+      expect(screen.getByText('Math Lesson')).toBeTruthy();
+      expect(screen.getByText('Science Lesson')).toBeTruthy();
+    });
+  });
+
+  it('handles API errors', async () => {
+    LessonResource.fetchCollection.mockRejectedValue(
+      new Error('Network error')
+    );
+
+    render(LessonList);
+
+    await waitFor(() => {
+      expect(screen.getByText('Failed to load lessons')).toBeTruthy();
+    });
+  });
+});
+```
+
+### Query Priorities
+
+Use queries in this priority order:
+
+<Steps>
+  <Step title="Accessible to everyone">
+    `getByRole`, `getByLabelText`, `getByPlaceholderText`, `getByText`
+  </Step>
+
+  <Step title="Semantic queries">
+    `getByAltText`, `getByTitle`
+  </Step>
+
+  <Step title="Test IDs (last resort)">
+    `getByTestId` - only when semantic queries don't work
+  </Step>
+</Steps>
+
+```javascript
+// Good - accessible queries
+screen.getByRole('button', { name: 'Submit' })
+screen.getByLabelText('Username')
+screen.getByText('Welcome')
+
+// Avoid - test IDs should be last resort
+screen.getByTestId('submit-button')
+```
+
+## Testing Best Practices
+
+<AccordionGroup>
+  <Accordion title="Write tests for all new code">
+    Both frontend and backend code should have tests. No exceptions.
+  </Accordion>
+
+  <Accordion title="Use descriptive test names">
+    Test names should describe what they test: `test_admin_can_create_lesson`, not `test_create`.
+  </Accordion>
+
+  <Accordion title="One assertion per test (when practical)">
+    Makes failures easier to diagnose. Group related assertions in describe blocks.
+  </Accordion>
+
+  <Accordion title="Test edge cases">
+    Test empty lists, None/null values, invalid input, permission boundaries.
+  </Accordion>
+
+  <Accordion title="Keep tests fast">
+    Use mocks for expensive operations. Use `setUpTestData` for Django tests.
+  </Accordion>
+
+  <Accordion title="Keep tests isolated">
+    Each test should be independent. Don't rely on test execution order.
+  </Accordion>
+
+  <Accordion title="Never weaken existing tests">
+    Don't modify or delete tests unless behavior has intentionally changed. If new code breaks tests, fix the code, not the tests.
+  </Accordion>
+
+  <Accordion title="Use smoke tests">
+    Add a simple test that just renders the component without errors.
+  </Accordion>
+
+  <Accordion title="Test behavior, not implementation">
+    Test what users see and do, not internal component state.
+  </Accordion>
+</AccordionGroup>
+
+## Common Patterns
+
+### Testing Permissions
+
+```python
+class PermissionTestCase(TestCase):
+    def test_admin_can_create_classroom(self):
+        """Test that facility admin can create classroom"""
+        self.assertTrue(
+            self.admin.can_create(
+                Classroom,
+                {"parent": self.facility}
+            )
+        )
+
+    def test_learner_cannot_create_classroom(self):
+        """Test that learner cannot create classroom"""
+        self.assertFalse(
+            self.learner.can_create(
+                Classroom,
+                {"parent": self.facility}
+            )
+        )
+```
+
+### Testing Form Validation
+
+```javascript
+it('shows error for invalid email', async () => {
+  const user = userEvent.setup();
+  render(SignUpForm);
+
+  const emailInput = screen.getByLabelText('Email');
+  await user.type(emailInput, 'invalid-email');
+  await user.tab(); // Trigger blur
+
+  expect(screen.getByText('Please enter a valid email')).toBeTruthy();
+});
+```
+
+### Testing User Interactions
+
+```javascript
+import userEvent from '@testing-library/user-event';
+
+it('submits form when button is clicked', async () => {
+  const user = userEvent.setup();
+  const onSubmit = jest.fn();
+
+  render(MyForm, {
+    props: { onSubmit },
+  });
+
+  await user.type(screen.getByLabelText('Name'), 'John Doe');
+  await user.click(screen.getByRole('button', { name: 'Submit' }));
+
+  expect(onSubmit).toHaveBeenCalledWith({ name: 'John Doe' });
+});
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Frontend Development" icon="code" href="/guides/frontend-development">
+    Learn patterns for testing Vue components
+  </Card>
+  <Card title="Backend Development" icon="server" href="/guides/backend-development">
+    Understand Django testing patterns
+  </Card>
+  <Card title="Plugin Development" icon="plug" href="/guides/plugin-development">
+    Test your custom plugins
+  </Card>
+</CardGroup>
+
+## Resources
+
+- [pytest Documentation](https://docs.pytest.org/)
+- [Django Testing](https://docs.djangoproject.com/en/stable/topics/testing/)
+- [Vue Testing Library](https://testing-library.com/docs/vue-testing-library/intro)
+- [Testing Library Queries](https://testing-library.com/docs/queries/about)
+- [Jest Documentation](https://jestjs.io/)

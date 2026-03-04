@@ -1,0 +1,446 @@
+---
+title: Core JavaScript API
+description: JavaScript core modules including Resource, Model, Collection, and HTTP client for API interactions
+---
+
+Kolibri's frontend provides a core JavaScript API for interacting with Django REST API endpoints. The main components are the `Resource` class for managing API resources, the HTTP `client` for making requests, and the `urls` object for accessing backend URLs.
+
+## Resource System
+
+The Resource system provides a structured way to interact with REST APIs using `Model` and `Collection` classes for data management.
+
+### Resource Class
+
+The `Resource` class represents a single API endpoint and provides caching, fetching, and model instantiation.
+
+**Source:** `packages/kolibri/apiResource.js:578`
+
+```javascript
+import { Resource } from 'kolibri/apiResource';
+
+// Create a resource
+const MyResource = new Resource({
+  name: 'mymodel',      // Django model name
+  namespace: 'core',    // Django app namespace (default: 'core')
+  idKey: 'id',          // Primary key field (default: 'id')
+});
+```
+
+#### Constructor Options
+
+- **name** (required): The Django REST API resource name
+- **namespace**: The Django app namespace (default: `'core'`)
+- **idKey**: The primary key field name (default: `'id'`)
+
+### Model Class
+
+Represents a single resource instance with fetching, saving, and deleting capabilities.
+
+**Source:** `packages/kolibri/apiResource.js:12`
+
+```javascript
+// Get or create a model
+const model = MyResource.getModel('some-id');
+
+// Fetch data from server
+await model.fetch();
+
+// Access model data
+console.log(model.data);
+
+// Update and save
+await model.save({ title: 'New Title' });
+
+// Delete
+await model.delete();
+```
+
+#### Model Properties
+
+- **id**: The model's primary key
+- **data**: A clean copy of model attributes (read-only)
+- **attributes**: Raw model attributes
+- **synced**: Whether the model is synced with the server
+- **new**: Whether the model exists on the server
+
+#### Model Methods
+
+**fetch(force = false)**
+
+Fetches model data from the server.
+
+- **force**: If `true`, fetch even if already synced
+- **Returns**: Promise resolving to model data
+
+```javascript
+// Fetch from cache if available
+await model.fetch();
+
+// Force refetch from server
+await model.fetch(true);
+```
+
+**save(attrs, exists = false)**
+
+Saves model changes to the server.
+
+- **attrs**: Object of attributes to save
+- **exists**: Override the new/existing detection
+- **Returns**: Promise resolving to updated model data
+
+```javascript
+// Update existing model (PATCH)
+await model.save({ title: 'Updated Title' });
+
+// Create new model (POST)
+const newModel = MyResource.createModel({ title: 'New Item' });
+await newModel.save();
+```
+
+**delete()**
+
+Deletes the model from the server.
+
+- **Returns**: Promise resolving to the model ID
+
+```javascript
+await model.delete();
+```
+
+### Collection Class
+
+Represents a collection of models from a list endpoint.
+
+**Source:** `packages/kolibri/apiResource.js:262`
+
+```javascript
+// Get a collection with query parameters
+const collection = MyResource.getCollection({ active: true });
+
+// Fetch data
+await collection.fetch();
+
+// Access collection data
+console.log(collection.data); // Array of model data
+
+// Access individual models
+collection.models.forEach(model => {
+  console.log(model.data);
+});
+```
+
+#### Collection Properties
+
+- **models**: Array of Model instances
+- **data**: Array of model data (or object with `results` if paginated)
+- **metadata**: Additional response metadata (e.g., pagination info)
+- **synced**: Whether collection is synced with server
+
+#### Collection Methods
+
+**fetch(force = false)**
+
+Fetches collection data from the server.
+
+```javascript
+await collection.fetch();
+```
+
+**save(data = [])**
+
+Bulk creates models (POST to collection endpoint).
+
+```javascript
+const newItems = [
+  { title: 'Item 1' },
+  { title: 'Item 2' },
+];
+await collection.save(newItems);
+```
+
+**delete()**
+
+Deletes all models matching the collection's query parameters.
+
+```javascript
+// Only works with filtered collections
+const filtered = MyResource.getCollection({ status: 'archived' });
+await filtered.delete();
+```
+
+### Resource Methods
+
+#### Convenience Methods
+
+**fetchModel({ id, getParams, force })**
+
+Fetch a single model by ID.
+
+```javascript
+const data = await MyResource.fetchModel({ id: 'some-id' });
+```
+
+**saveModel({ id, data, getParams, exists })**
+
+Save a model.
+
+```javascript
+// Create new
+const newData = await MyResource.saveModel({ 
+  data: { title: 'New Item' } 
+});
+
+// Update existing
+const updated = await MyResource.saveModel({ 
+  id: 'some-id',
+  data: { title: 'Updated' }
+});
+```
+
+**deleteModel({ id, getParams })**
+
+Delete a model.
+
+```javascript
+await MyResource.deleteModel({ id: 'some-id' });
+```
+
+**fetchCollection({ getParams, force })**
+
+Fetch a collection.
+
+```javascript
+const data = await MyResource.fetchCollection({ 
+  getParams: { active: true } 
+});
+```
+
+#### Simple CRUD Methods
+
+For simple use cases without caching:
+
+```javascript
+// GET /api/resource/:id/
+const item = await MyResource.get('some-id');
+
+// GET /api/resource/
+const items = await MyResource.list({ active: true });
+
+// POST /api/resource/
+const created = await MyResource.create({ title: 'New' });
+```
+
+#### Custom Endpoints
+
+For custom viewset actions:
+
+**List endpoints** (no ID required):
+
+```javascript
+// GET request
+await MyResource.getListEndpoint('custom_action', { param: 'value' });
+
+// POST request
+await MyResource.postListEndpoint('custom_action', { data: 'value' });
+```
+
+**Detail endpoints** (ID required):
+
+```javascript
+// POST to /api/resource/:id/custom_action/
+await MyResource.postDetailEndpoint('custom_action', 'some-id', { 
+  data: 'value' 
+});
+```
+
+## HTTP Client
+
+The `client` module provides an HTTP client based on Axios.
+
+**Source:** `packages/kolibri/client.js:70`
+
+```javascript
+import client from 'kolibri/client';
+import urls from 'kolibri/urls';
+
+// GET request
+const response = await client({
+  url: urls['kolibri:core:session_list'](),
+  params: { active: true },
+});
+
+// POST request
+const response = await client({
+  url: urls['kolibri:core:session_list'](),
+  method: 'post',
+  data: { username: 'user', password: 'pass' },
+});
+
+// Access response data
+console.log(response.data);
+```
+
+### Client Options
+
+- **url**: Request URL (required)
+- **method**: HTTP method (`'get'`, `'post'`, `'patch'`, `'delete'`, etc.)
+- **data**: Request body data
+- **params**: URL query parameters
+- **headers**: Custom headers
+- **multipart**: If `true`, send as multipart/form-data
+
+### Built-in Features
+
+- Automatic disconnection detection
+- Login timeout detection
+- CSRF token handling
+- Request cancellation when offline
+
+## URLs Object
+
+The `urls` object provides access to Django backend URLs.
+
+**Source:** `packages/kolibri/urls.js`
+
+```javascript
+import urls from 'kolibri/urls';
+
+// List endpoint (no parameters)
+const listUrl = urls['kolibri:core:session_list']();
+
+// Detail endpoint (with ID)
+const detailUrl = urls['kolibri:core:session_detail']('session-id');
+
+// Use with client
+const response = await client({ url: listUrl });
+```
+
+### URL Naming Convention
+
+URLs follow the pattern: `kolibri:{namespace}:{model}_{action}`
+
+- **namespace**: Django app namespace (e.g., `core`, `content`)
+- **model**: Model name (lowercase)
+- **action**: `list`, `detail`, or custom action name
+
+Examples:
+- `kolibri:core:session_list`
+- `kolibri:core:session_detail`
+- `kolibri:content:contentnode_list`
+
+## Real-World Examples
+
+### Defining a Resource
+
+```javascript
+// apiResources/ClassroomResource.js
+import { Resource } from 'kolibri/apiResource';
+
+export default new Resource({
+  name: 'classroom',
+  namespace: 'core',
+});
+```
+
+### Fetching and Displaying Data
+
+```javascript
+import { ref } from 'vue';
+import ClassroomResource from './apiResources/ClassroomResource';
+
+export default {
+  setup() {
+    const classrooms = ref([]);
+    const loading = ref(true);
+
+    async function loadClassrooms() {
+      try {
+        const data = await ClassroomResource.fetchCollection({
+          getParams: { active: true },
+        });
+        classrooms.value = data;
+      } finally {
+        loading.value = false;
+      }
+    }
+
+    loadClassrooms();
+
+    return { classrooms, loading };
+  },
+};
+```
+
+### Creating and Saving
+
+```javascript
+import ClassroomResource from './apiResources/ClassroomResource';
+
+async function createClassroom(name) {
+  const classroom = ClassroomResource.createModel({
+    name: name,
+    active: true,
+  });
+  
+  const savedData = await classroom.save();
+  return savedData;
+}
+
+// Or use the convenience method
+async function createClassroomSimple(name) {
+  return await ClassroomResource.saveModel({
+    data: { name, active: true },
+  });
+}
+```
+
+### Using Cached Models
+
+```javascript
+// Get cached model or create new cache entry
+const classroom = ClassroomResource.getModel('classroom-id');
+
+// First fetch - hits server
+await classroom.fetch();
+
+// Second fetch - uses cache
+await classroom.fetch();
+
+// Force refetch
+await classroom.fetch(true);
+```
+
+### Working with Custom Endpoints
+
+```javascript
+// For a viewset with @action(detail=True, methods=['post'])
+async function enrollStudent(classroomId, studentId) {
+  return await ClassroomResource.postDetailEndpoint(
+    'enroll',
+    classroomId,
+    { student_id: studentId }
+  );
+}
+
+// For a viewset with @action(detail=False, methods=['get'])
+async function getStatistics() {
+  const response = await ClassroomResource.getListEndpoint('statistics');
+  return response.data;
+}
+```
+
+## Best Practices
+
+1. **Always use Resource classes** for API calls - never use raw `fetch` or direct axios
+2. **Define resources once** in dedicated `apiResources/` files
+3. **Leverage caching** with `getModel()` and `getCollection()` for frequently accessed data
+4. **Use convenience methods** (`fetchModel`, `saveModel`) for simple operations
+5. **Handle errors** appropriately - promises will reject on HTTP errors
+6. **Use getParams** for filtering collections consistently
+7. **Check model.synced** before assuming data freshness
+
+## See Also
+
+- [Backend Development Guide](/guides/backend-development)
+- [API Overview](/api/overview)
+- [Vue Composables](/api/frontend/composables)

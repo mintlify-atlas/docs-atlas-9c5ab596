@@ -1,0 +1,263 @@
+---
+title: REST API Overview
+description: Overview of the Kolibri REST API including base URLs, response formats, and pagination
+---
+
+## Introduction
+
+Kolibri provides a comprehensive REST API for managing educational content, users, facilities, and learning activities. The API follows REST principles and uses JSON for request and response payloads.
+
+## Base URL
+
+All API endpoints are relative to your Kolibri server's base URL:
+
+```
+http://<server-address>:<port>/api/
+```
+
+For example, on a local development server:
+
+```
+http://localhost:8000/api/
+```
+
+## API Versioning
+
+Kolibri does not currently use explicit API versioning in the URL path. The API evolves with the Kolibri version, maintaining backward compatibility where possible.
+
+## Authentication
+
+Most API endpoints require authentication. Kolibri uses session-based authentication by default. See the [Authentication](/api/authentication) documentation for details on login, logout, and session management.
+
+## Request Format
+
+### HTTP Methods
+
+The API uses standard HTTP methods:
+
+- `GET` - Retrieve resources
+- `POST` - Create new resources
+- `PUT` - Update entire resources
+- `PATCH` - Partial update of resources
+- `DELETE` - Delete resources
+
+### Content Type
+
+All POST, PUT, and PATCH requests should include the `Content-Type: application/json` header and send data as JSON in the request body.
+
+```bash
+curl -X POST http://localhost:8000/api/auth/session/ \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "password", "facility": "facility-id"}'
+```
+
+## Response Format
+
+### Success Responses
+
+Successful responses return JSON data with appropriate HTTP status codes:
+
+- `200 OK` - Successful GET, PUT, PATCH requests
+- `201 Created` - Successful POST request creating a resource
+- `204 No Content` - Successful DELETE request
+
+**Example single resource response:**
+
+```json
+{
+  "id": "a1b2c3d4e5f6",
+  "username": "learner1",
+  "full_name": "Jane Doe",
+  "facility": "f1a2c3i4l5i6",
+  "roles": [],
+  "is_superuser": false
+}
+```
+
+**Example list response:**
+
+```json
+[
+  {
+    "id": "a1b2c3d4e5f6",
+    "username": "learner1",
+    "full_name": "Jane Doe"
+  },
+  {
+    "id": "b2c3d4e5f6a1",
+    "username": "learner2",
+    "full_name": "John Smith"
+  }
+]
+```
+
+### Error Responses
+
+Error responses include appropriate HTTP status codes and error details:
+
+- `400 Bad Request` - Invalid request data
+- `401 Unauthorized` - Authentication required or failed
+- `403 Forbidden` - Authenticated but lacking permissions
+- `404 Not Found` - Resource not found
+- `500 Internal Server Error` - Server error
+
+**Example error response:**
+
+```json
+[
+  {
+    "id": "INVALID_CREDENTIALS",
+    "metadata": {
+      "field": "password",
+      "message": "Invalid credentials provided."
+    }
+  }
+]
+```
+
+Error responses may include an error code identifier (`id`) and metadata with field-specific information.
+
+## Pagination
+
+### Optional Pagination
+
+Many list endpoints support optional pagination using the `OptionalPageNumberPagination` class. Pagination is activated only when the `page_size` parameter is provided.
+
+<ParamField query="page_size" type="integer">
+  Number of results to return per page. If not specified, all results are returned.
+</ParamField>
+
+<ParamField query="page" type="integer" default="1">
+  Page number to retrieve (1-indexed).
+</ParamField>
+
+**Example paginated request:**
+
+```bash
+curl "http://localhost:8000/api/auth/facilityuser/?page_size=20&page=1"
+```
+
+**Example paginated response:**
+
+```json
+{
+  "count": 150,
+  "next": "http://localhost:8000/api/auth/facilityuser/?page=2&page_size=20",
+  "previous": null,
+  "results": [
+    {
+      "id": "a1b2c3d4e5f6",
+      "username": "learner1",
+      "full_name": "Jane Doe"
+    }
+  ]
+}
+```
+
+<ResponseField name="count" type="integer">
+  Total number of items across all pages.
+</ResponseField>
+
+<ResponseField name="next" type="string | null">
+  URL to the next page of results, or `null` if this is the last page.
+</ResponseField>
+
+<ResponseField name="previous" type="string | null">
+  URL to the previous page of results, or `null` if this is the first page.
+</ResponseField>
+
+<ResponseField name="results" type="array">
+  Array of items for the current page.
+</ResponseField>
+
+## Filtering and Searching
+
+Many endpoints support filtering and searching through query parameters.
+
+### Filtering
+
+Filter by specific field values:
+
+```bash
+curl "http://localhost:8000/api/auth/facilityuser/?facility=<facility-id>"
+```
+
+### Search
+
+Search across multiple fields using the `search` parameter:
+
+```bash
+curl "http://localhost:8000/api/auth/facilityuser/?search=jane"
+```
+
+The specific fields searched vary by endpoint. Common searchable fields include `username`, `full_name`, and `title`.
+
+### Ordering
+
+Order results using the `ordering` parameter:
+
+```bash
+curl "http://localhost:8000/api/auth/facilityuser/?ordering=username"
+curl "http://localhost:8000/api/auth/facilityuser/?ordering=-date_joined"  # descending
+```
+
+Prefix the field name with `-` for descending order.
+
+## ValuesViewset Pattern
+
+Many Kolibri API endpoints use the `ValuesViewset` pattern for performance optimization. This pattern:
+
+- Fetches only needed fields in a single database query
+- Avoids N+1 query problems when traversing relationships
+- Returns data directly from database values without model instantiation
+
+From an API consumer perspective, `ValuesViewset` endpoints behave like standard REST endpoints but offer better performance for read operations.
+
+## CSRF Protection
+
+Kolibri uses CSRF protection for state-changing operations. When making POST, PUT, PATCH, or DELETE requests from a browser:
+
+1. First obtain a CSRF token by making a GET request to `/api/auth/session/current/`
+2. Include the token in subsequent requests via the `X-CSRFToken` header
+
+```javascript
+// Example using fetch API
+const response = await fetch('/api/auth/session/current/');
+const csrfToken = response.headers.get('X-CSRFToken');
+
+await fetch('/api/auth/facilityuser/', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-CSRFToken': csrfToken
+  },
+  body: JSON.stringify(data)
+});
+```
+
+## Common Query Parameters
+
+<ParamField query="search" type="string">
+  Full-text search across searchable fields.
+</ParamField>
+
+<ParamField query="ordering" type="string">
+  Field name to order results by. Prefix with `-` for descending order.
+</ParamField>
+
+<ParamField query="page_size" type="integer">
+  Enable pagination and set number of results per page.
+</ParamField>
+
+<ParamField query="page" type="integer" default="1">
+  Page number when pagination is enabled.
+</ParamField>
+
+## Rate Limiting
+
+Kolibri does not currently implement rate limiting at the API level. However, administrators can configure rate limiting at the reverse proxy level (nginx, Apache, etc.).
+
+## Next Steps
+
+- [Authentication](/api/authentication) - Learn how to authenticate and manage sessions
+- [Permissions](/api/permissions) - Understand the permission system and access control

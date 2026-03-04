@@ -1,0 +1,614 @@
+---
+title: Plugin Development Guide
+description: Creating Kolibri plugins with kolibri_plugin.py, hooks, and frontend bundles
+---
+
+## Overview
+
+Kolibri's plugin architecture allows you to extend its functionality with optional, independent features. Plugins can add new UI interfaces, API endpoints, models, and background tasks.
+
+## Core vs. Plugins: When to Create a Plugin
+
+Understand the difference between core functionality and plugins:
+
+### Core Modules (`kolibri/core/*`)
+
+Use core for functionality that is:
+- **Essential** to Kolibri's operation
+- **Always required** and cannot be disabled
+- **Shared infrastructure** used across plugins
+- **Base models/APIs** that plugins extend
+
+Examples: `auth`, `content`, `logger`, `tasks`, `device`
+
+### Plugins (`kolibri/plugins/*`)
+
+Use plugins for features that are:
+- **Optional** and can be enabled/disabled
+- **Self-contained** user-facing functionality
+- **Specific workflows** (Learn, Coach, Facility)
+- **Deployment-specific** features
+
+Examples: `learn`, `coach`, `facility`, `device`
+
+<Note>
+  **Decision rule**: If administrators should be able to disable the feature, make it a plugin. If it's required for Kolibri to function, put it in core.
+</Note>
+
+## Plugin Structure
+
+A typical Kolibri plugin has this structure:
+
+```
+kolibri/plugins/my_plugin/
+├── __init__.py
+├── kolibri_plugin.py          # Plugin definition (required)
+├── models.py                   # Django models (optional)
+├── api.py                      # API viewsets (optional)
+├── api_urls.py                 # API URL routing (optional)
+├── urls.py                     # Frontend URL routing (optional)
+├── options.py                  # Plugin options (optional)
+├── tasks.py                    # Background tasks (optional)
+├── test/                       # Backend tests
+│   └── test_api.py
+└── frontend/                   # Frontend code
+    ├── app.js                  # Main app entry point
+    ├── routes/                 # Vue Router routes
+    ├── views/                  # Vue components
+    ├── composables/            # Composables
+    ├── apiResources.js         # API resource definitions
+    └── __tests__/              # Frontend tests
+```
+
+## Creating a Plugin
+
+### Step 1: Create Plugin Directory
+
+Create a new directory in `kolibri/plugins/`:
+
+```bash
+mkdir -p kolibri/plugins/my_plugin
+touch kolibri/plugins/my_plugin/__init__.py
+```
+
+### Step 2: Define kolibri_plugin.py
+
+Create the required `kolibri_plugin.py` file:
+
+```python kolibri/plugins/my_plugin/kolibri_plugin.py
+from kolibri.plugins import KolibriPluginBase
+from kolibri.plugins.hooks import register_hook
+from kolibri.core.webpack import hooks as webpack_hooks
+from kolibri.utils import translation
+from kolibri.utils.translation import gettext as _
+
+
+class MyPlugin(KolibriPluginBase):
+    # URL modules
+    untranslated_view_urls = "api_urls"  # API endpoints
+    translated_view_urls = "urls"        # Frontend routes
+
+    # Optional: Plugin options and settings
+    kolibri_options = "options"
+
+    # Allow plugin to be managed while Kolibri is running
+    can_manage_while_running = True
+
+    def name(self, lang):
+        """Return translated plugin name"""
+        with translation.override(lang):
+            return _("My Plugin")
+
+
+@register_hook
+class MyPluginAsset(webpack_hooks.WebpackBundleHook):
+    """Register the main frontend bundle"""
+    bundle_id = "app"
+
+    @property
+    def plugin_data(self):
+        """Pass data to the frontend bundle"""
+        return {
+            "apiEnabled": True,
+            "maxItems": 100,
+        }
+```
+
+### Step 3: Add Frontend Bundle
+
+Create the frontend entry point:
+
+```javascript kolibri/plugins/my_plugin/frontend/app.js
+import router from './routes';
+import KolibriApp from 'kolibri-app';
+import RootComponent from './views/RootComponent.vue';
+
+class MyPluginModule extends KolibriApp {
+  get routes() {
+    return router;
+  }
+  get RootComponent() {
+    return RootComponent;
+  }
+}
+
+export default new MyPluginModule();
+```
+
+Create routes:
+
+```javascript kolibri/plugins/my_plugin/frontend/routes/index.js
+import VueRouter from 'vue-router';
+import HomePage from '../views/HomePage.vue';
+
+const routes = [
+  {
+    path: '/',
+    name: 'HOME',
+    component: HomePage,
+  },
+];
+
+const router = new VueRouter({
+  routes,
+});
+
+export default router;
+```
+
+### Step 4: Add API Endpoints (Optional)
+
+Create API viewsets:
+
+```python kolibri/plugins/my_plugin/api.py
+from kolibri.core.api import ValuesViewset
+from kolibri.core.auth.api import KolibriAuthPermissions
+from .models import MyModel
+
+
+class MyModelPermissions(KolibriAuthPermissions):
+    pass
+
+
+class MyModelViewset(ValuesViewset):
+    queryset = MyModel.objects.all()
+    permission_classes = (MyModelPermissions,)
+
+    values = (
+        "id",
+        "title",
+        "description",
+        "created_at",
+    )
+```
+
+Register API URLs:
+
+```python kolibri/plugins/my_plugin/api_urls.py
+from django.urls import path, include
+from rest_framework import routers
+from .api import MyModelViewset
+
+router = routers.SimpleRouter()
+router.register(r'mymodel', MyModelViewset, basename='mymodel')
+
+urlpatterns = [
+    path('', include(router.urls)),
+]
+```
+
+### Step 5: Enable the Plugin
+
+Enable your plugin:
+
+```bash
+kolibri plugin enable kolibri.plugins.my_plugin
+kolibri start
+```
+
+## Real-World Example: Learn Plugin
+
+Here's the actual `kolibri_plugin.py` from the Learn plugin:
+
+```python
+from django.urls import reverse
+from kolibri.core.auth.constants.user_kinds import ANONYMOUS, LEARNER
+from kolibri.core.device.utils import get_device_setting
+from kolibri.core.hooks import NavigationHook, RoleBasedRedirectHook
+from kolibri.core.webpack import hooks as webpack_hooks
+from kolibri.plugins import KolibriPluginBase
+from kolibri.plugins.hooks import register_hook
+from kolibri.utils import translation
+from kolibri.utils.translation import gettext as _
+
+
+class Learn(KolibriPluginBase):
+    untranslated_view_urls = "api_urls"
+    translated_view_urls = "urls"
+    kolibri_options = "options"
+    can_manage_while_running = True
+
+    def name(self, lang):
+        with translation.override(lang):
+            return _("Learn")
+
+
+@register_hook
+class LearnRedirect(RoleBasedRedirectHook):
+    """Redirect learners to Learn plugin"""
+    @property
+    def roles(self):
+        return (ANONYMOUS, LEARNER)
+
+    @property
+    def url(self):
+        return self.plugin_url(Learn, "learn")
+
+
+@register_hook
+class LearnNavItem(NavigationHook):
+    """Add Learn to navigation"""
+    bundle_id = "side_nav"
+
+
+@register_hook
+class LearnAsset(webpack_hooks.WebpackBundleHook):
+    """Main Learn plugin bundle"""
+    bundle_id = "app"
+
+    @property
+    def plugin_data(self):
+        """Pass device settings to frontend"""
+        return {
+            "allowGuestAccess": get_device_setting("allow_guest_access"),
+            "allowLearnerDownloads": get_device_setting(
+                "allow_learner_download_resources"
+            ),
+        }
+```
+
+## Plugin Hooks
+
+Hooks allow plugins to extend Kolibri's functionality at specific points.
+
+### WebpackBundleHook
+
+Register frontend JavaScript bundles:
+
+```python
+from kolibri.core.webpack import hooks as webpack_hooks
+from kolibri.plugins.hooks import register_hook
+
+@register_hook
+class MyAsset(webpack_hooks.WebpackBundleHook):
+    bundle_id = "app"  # Must match a bundle in frontend/
+```
+
+### NavigationHook
+
+Add items to the navigation menu:
+
+```python
+from kolibri.core.hooks import NavigationHook
+from kolibri.plugins.hooks import register_hook
+
+@register_hook
+class MyNavItem(NavigationHook):
+    bundle_id = "side_nav"  # Bundle with navigation component
+```
+
+### RoleBasedRedirectHook
+
+Redirect users based on their role:
+
+```python
+from kolibri.core.hooks import RoleBasedRedirectHook
+from kolibri.core.auth.constants.user_kinds import COACH
+from kolibri.plugins.hooks import register_hook
+
+@register_hook
+class CoachRedirect(RoleBasedRedirectHook):
+    @property
+    def roles(self):
+        return (COACH,)
+
+    @property
+    def url(self):
+        return self.plugin_url(MyPlugin, "dashboard")
+```
+
+## Plugin Options
+
+Define plugin-specific configuration:
+
+```python kolibri/plugins/my_plugin/options.py
+from kolibri.utils.conf import OPTIONS
+
+options_spec = {
+    "MyPlugin": {
+        "ENABLE_FEATURE_X": {
+            "type": "boolean",
+            "default": False,
+        },
+        "MAX_ITEMS": {
+            "type": "integer",
+            "default": 100,
+        },
+    }
+}
+```
+
+Access options in Python:
+
+```python
+from kolibri.utils import conf
+
+if conf.OPTIONS["MyPlugin"]["ENABLE_FEATURE_X"]:
+    # Feature is enabled
+    pass
+```
+
+Set options via environment variables or `options.ini`:
+
+```bash
+export KOLIBRI_MYPLUGIN_ENABLE_FEATURE_X=True
+```
+
+Or in `$KOLIBRI_HOME/options.ini`:
+
+```ini
+[MyPlugin]
+ENABLE_FEATURE_X = True
+MAX_ITEMS = 200
+```
+
+## Frontend Components in Plugins
+
+Create Vue components following Kolibri patterns:
+
+```vue kolibri/plugins/my_plugin/frontend/views/HomePage.vue
+<template>
+  <div>
+    <h1>{{ pageTitle$() }}</h1>
+    <KButton @click="loadData">
+      {{ loadButtonLabel$() }}
+    </KButton>
+    <KCircularLoader v-if="loading" />
+    <ul v-else>
+      <li v-for="item in items" :key="item.id">
+        {{ item.title }}
+      </li>
+    </ul>
+  </div>
+</template>
+
+<script>
+import { ref } from 'vue';
+import { createTranslator } from 'kolibri/utils/i18n';
+import { MyModelResource } from '../apiResources';
+
+const strings = createTranslator('HomePageStrings', {
+  pageTitle: {
+    message: 'My Plugin Home',
+    context: 'Page heading',
+  },
+  loadButtonLabel: {
+    message: 'Load data',
+    context: 'Button to fetch data',
+  },
+});
+
+export default {
+  name: 'HomePage',
+  setup() {
+    const loading = ref(false);
+    const items = ref([]);
+
+    async function loadData() {
+      loading.value = true;
+      try {
+        items.value = await MyModelResource.fetchCollection();
+      } finally {
+        loading.value = false;
+      }
+    }
+
+    const { pageTitle$, loadButtonLabel$ } = strings;
+
+    return {
+      loading,
+      items,
+      loadData,
+      pageTitle$,
+      loadButtonLabel$,
+    };
+  },
+};
+</script>
+```
+
+## API Resources in Plugins
+
+Define API resources for frontend:
+
+```javascript kolibri/plugins/my_plugin/frontend/apiResources.js
+import { Resource } from 'kolibri/apiResource';
+
+export const MyModelResource = new Resource({
+  name: 'mymodel',
+  namespace: 'kolibri.plugins.my_plugin',
+});
+```
+
+## Plugin Management
+
+### Enable/Disable Plugins
+
+```bash
+# Enable a plugin
+kolibri plugin enable kolibri.plugins.my_plugin
+
+# Disable a plugin
+kolibri plugin disable kolibri.plugins.my_plugin
+
+# Set exact list of enabled plugins
+kolibri plugin apply kolibri.plugins.learn kolibri.plugins.coach
+
+# List enabled plugins
+kolibri plugin list
+```
+
+<Note>
+  Restart Kolibri after enabling/disabling plugins for changes to take effect.
+</Note>
+
+### Using External Plugins with PEX
+
+When using externally-built plugins with a PEX distribution:
+
+```bash
+export PEX_INHERIT_PATH=fallback
+python kolibri.pex start
+```
+
+This allows the PEX file to access plugins installed in the system Python path.
+
+## Testing Plugins
+
+### Backend Tests
+
+```python kolibri/plugins/my_plugin/test/test_api.py
+from django.urls import reverse
+from rest_framework import status
+from rest_framework.test import APITestCase
+from kolibri.core.auth.test.helpers import provision_device
+
+
+class MyPluginAPITestCase(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.data = provision_device()
+        cls.user = cls.data["facility_admin"]
+
+    def test_can_list_models(self):
+        """Test that authenticated user can list models"""
+        self.client.force_authenticate(user=self.user)
+        url = reverse('kolibri:kolibri.plugins.my_plugin:mymodel-list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+```
+
+### Frontend Tests
+
+```javascript kolibri/plugins/my_plugin/frontend/__tests__/HomePage.spec.js
+import { render, screen } from '@testing-library/vue';
+import HomePage from '../views/HomePage.vue';
+
+describe('HomePage', () => {
+  it('renders the page title', () => {
+    render(HomePage);
+    expect(screen.getByText('My Plugin Home')).toBeTruthy();
+  });
+});
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Keep plugins self-contained">
+    Minimize dependencies on other plugins. Use core APIs for shared functionality.
+  </Accordion>
+
+  <Accordion title="Use meaningful bundle IDs">
+    Bundle IDs should clearly indicate their purpose (e.g., `app`, `side_nav`, `settings`).
+  </Accordion>
+
+  <Accordion title="Follow plugin naming conventions">
+    Use lowercase with underscores: `my_plugin`, not `MyPlugin` or `my-plugin`.
+  </Accordion>
+
+  <Accordion title="Document plugin options">
+    Clearly document all configuration options in comments.
+  </Accordion>
+
+  <Accordion title="Test plugin enable/disable">
+    Ensure your plugin can be safely enabled and disabled without breaking Kolibri.
+  </Accordion>
+
+  <Accordion title="Use ValuesViewset for APIs">
+    Follow the same patterns as core plugins for consistency and performance.
+  </Accordion>
+
+  <Accordion title="Internationalize all strings">
+    Use `createTranslator` for frontend and Django's `gettext` for backend.
+  </Accordion>
+</AccordionGroup>
+
+## Common Patterns
+
+### Accessing Plugin Data in Frontend
+
+Data passed via `plugin_data` is available globally:
+
+```javascript
+// Access plugin data
+const pluginData = window.kolibri_plugin_data;
+const apiEnabled = pluginData.apiEnabled;
+```
+
+### Adding Background Tasks
+
+```python kolibri/plugins/my_plugin/tasks.py
+from kolibri.core.tasks.decorators import register_task
+from kolibri.core.tasks.job import Job
+
+@register_task
+class ProcessDataTask(Job):
+    def run(self, data_id):
+        # Process data
+        self.update_progress(0.5, 1.0)
+        # More processing
+        self.update_progress(1.0, 1.0)
+        return {"processed": data_id}
+```
+
+### Navigation Items
+
+Create a navigation component:
+
+```vue kolibri/plugins/my_plugin/frontend/side_nav.js
+import SideNavComponent from './components/SideNavItem.vue';
+import KolibriApp from 'kolibri-app';
+
+class SideNavModule extends KolibriApp {
+  get RootComponent() {
+    return SideNavComponent;
+  }
+}
+
+export default new SideNavModule();
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Frontend Development" icon="code" href="/guides/frontend-development">
+    Build Vue.js interfaces for your plugin
+  </Card>
+  <Card title="Backend Development" icon="server" href="/guides/backend-development">
+    Create API endpoints and models
+  </Card>
+  <Card title="Testing" icon="flask" href="/guides/testing">
+    Write tests for your plugin
+  </Card>
+  <Card title="Internationalization" icon="language" href="/guides/internationalization">
+    Make your plugin translatable
+  </Card>
+</CardGroup>
+
+## Resources
+
+- Browse existing plugins in `kolibri/plugins/` for examples
+- Learn plugin: Full-featured plugin with all components
+- Coach plugin: Complex plugin with multiple bundles
+- Device plugin: Plugin with settings and options

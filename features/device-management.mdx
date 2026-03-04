@@ -1,0 +1,747 @@
+---
+title: Device Management
+description: Content import and export, device synchronization, and system configuration
+---
+
+The Device Management plugin provides super administrators with comprehensive tools to manage content, configure device settings, and maintain Kolibri installations. It serves as the technical control center for Kolibri deployments.
+
+## Overview
+
+Device Management encompasses all system-level administration tasks including content curation, device configuration, facility management, and system maintenance. This plugin is designed for technical administrators responsible for Kolibri infrastructure.
+
+**Key Capabilities:**
+- Import content channels from Kolibri Studio
+- Manage on-device content and storage
+- Sync content between Kolibri devices
+- Configure device settings and permissions
+- Manage multiple facilities on one device
+- Monitor system tasks and resource usage
+- Export content to other devices or drives
+
+<Warning>
+Device Management features are available only to Super Admin users. These operations affect all users on the device.
+</Warning>
+
+## Content Channel Management
+
+Content channels are collections of educational resources curated by content providers and imported from Kolibri Studio.
+
+### Importing Content Channels
+
+<Steps>
+  <Step title="Start Import Workflow">
+    From Device > Channels:
+    - Click "Import" button
+    - Choose import source
+  </Step>
+  
+  <Step title="Select Import Source">
+    Choose where to import content from:
+    
+    **Kolibri Studio (Internet)**
+    - Import directly from Kolibri Studio
+    - Requires internet connection
+    - Access to full channel catalog
+    - Automatically gets latest version
+    
+    **Local Network**
+    - Import from other Kolibri device on same network
+    - No internet required
+    - Faster than internet import
+    - Discover devices automatically
+    
+    **External Drive**
+    - Import from USB drive or external storage
+    - Offline import option
+    - Pre-downloaded channel databases
+    - Useful for disconnected deployments
+  </Step>
+  
+  <Step title="Select Channel">
+    Choose channels to import:
+    - Browse available channels
+    - View channel descriptions and metadata
+    - See channel size and resource count
+    - Check for channel updates
+  </Step>
+  
+  <Step title="Select Content">
+    Customize what to import:
+    - Import entire channel or select topics
+    - Navigate topic tree
+    - View resource counts and sizes
+    - Filter by resource type or language
+    - Optimize for available storage
+  </Step>
+  
+  <Step title="Import and Monitor">
+    Start the import:
+    - Review total size and resource count
+    - Confirm import
+    - Monitor progress in task manager
+    - Import runs in background
+  </Step>
+</Steps>
+
+### Channel Import Sources
+
+<Tabs>
+  <Tab title="Kolibri Studio">
+    **Advantages:**
+    - Always latest channel versions
+    - Full channel catalog
+    - Curated quality content
+    - Direct from source
+    
+    **Requirements:**
+    - Internet connection
+    - Sufficient bandwidth
+    - Storage space on device
+    
+    **Best For:**
+    - Initial device setup
+    - Channel updates
+    - Deployments with internet
+  </Tab>
+  
+  <Tab title="Local Network">
+    **Advantages:**
+    - Fast local transfer speeds
+    - No internet required
+    - Share between nearby devices
+    - Automatic device discovery
+    
+    **Requirements:**
+    - Devices on same network
+    - Source device has content
+    - Network connectivity
+    
+    **Best For:**
+    - Multi-device deployments
+    - Limited internet access
+    - Distributing content to multiple devices
+  </Tab>
+  
+  <Tab title="External Drive">
+    **Advantages:**
+    - Completely offline
+    - Portable content distribution
+    - Pre-prepared content packages
+    - No network required
+    
+    **Requirements:**
+    - USB drive or external storage
+    - Pre-exported channels
+    - Compatible file format
+    
+    **Best For:**
+    - Remote locations
+    - No connectivity
+    - Bulk device provisioning
+  </Tab>
+</Tabs>
+
+### Managing Installed Channels
+
+**Channel List View**
+
+The Channels page displays all installed channels with:
+- Channel name and thumbnail
+- Version information
+- Total size on disk
+- Number of resources
+- Last updated date
+
+**Channel Operations**
+
+<AccordionGroup>
+  <Accordion title="Manage Channel Contents">
+    Customize what's included:
+    - Add more topics from channel
+    - Remove unused topics to free space
+    - Update to latest channel version
+    - View detailed resource tree
+  </Accordion>
+  
+  <Accordion title="Update Channel">
+    Get latest content:
+    - Check for channel updates
+    - View what's new or changed
+    - Update channel version
+    - Add new resources from update
+  </Accordion>
+  
+  <Accordion title="Export Channel">
+    Share content with other devices:
+    - Export to USB drive
+    - Export to local network device
+    - Choose specific topics to export
+    - Create portable content packages
+  </Accordion>
+  
+  <Accordion title="Delete Channel">
+    Remove channels no longer needed:
+    - Confirmation required
+    - Frees storage space
+    - Removes all channel content
+    - Cannot be undone (requires re-import)
+  </Accordion>
+</AccordionGroup>
+
+### Selective Content Import
+
+Rather than importing entire channels, admins can select specific content:
+
+**Topic Selection**
+1. Navigate channel topic tree
+2. Check/uncheck topics to include
+3. See size calculation update in real-time
+4. Import only selected content
+
+**Benefits:**
+- Optimize storage usage
+- Curate relevant content
+- Focus on curriculum needs
+- Fit content to available space
+
+<Tip>
+For devices with limited storage, import only the topics most relevant to your curriculum and learner needs.
+</Tip>
+
+## Content Updates and Versioning
+
+Channels are periodically updated by content providers with new or improved resources.
+
+### Channel Updates
+
+**Update Notification**
+
+When updates are available:
+- "New" badge on channel
+- Update available indicator
+- View what's new in update
+
+**Update Workflow**
+
+<Steps>
+  <Step title="Check for Updates">
+    From Channels page:
+    - "Update" badge appears on outdated channels
+    - Click channel options menu
+    - Select "Update"
+  </Step>
+  
+  <Step title="Review Changes">
+    See what's new:
+    - New resources added
+    - Updated resources
+    - Removed resources
+    - Version number change
+  </Step>
+  
+  <Step title="Select Update Content">
+    Choose what to update:
+    - Update all channel content
+    - Add only new resources
+    - Maintain current selection
+  </Step>
+  
+  <Step title="Import Update">
+    Complete the update:
+    - Import new/changed resources
+    - Existing content remains
+    - Learner progress preserved
+  </Step>
+</Steps>
+
+<Info>
+Updating channels does not affect learner progress or assignments. Lessons and quizzes continue to work with updated content.
+</Info>
+
+## Device Settings
+
+Device-level settings control system behavior and access policies.
+
+### General Device Settings
+
+<Tabs>
+  <Tab title="Device Info">
+    **Device Identification**
+    - Device name (customizable)
+    - Kolibri version
+    - Device ID (unique identifier)
+    - Operating system information
+    - Available storage
+    
+    **Device Name**
+    - Edit device name
+    - Appears in network discovery
+    - Identifies device in multi-device setups
+  </Tab>
+  
+  <Tab title="Content Settings">
+    **Content Storage**
+    - Primary storage location
+    - Additional storage locations
+    - Available/used storage display
+    - Storage location management
+    
+    **Content Download**
+    - Allow downloads on metered connections
+    - Download bandwidth limits
+    - Auto-download settings
+  </Tab>
+  
+  <Tab title="Network Settings">
+    **Network Access**
+    - Allow other devices to connect
+    - Network discovery settings
+    - Port configuration
+    - Firewall compatibility
+    
+    **P2P Syncing**
+    - Enable peer-to-peer content sharing
+    - Network device discovery
+    - Connection preferences
+  </Tab>
+</Tabs>
+
+### Advanced Settings
+
+**Server Settings**
+- Port number for web interface
+- Network interface binding
+- Connection timeout settings
+- Concurrent user limits
+
+**Restart and Maintenance**
+- Restart Kolibri service
+- Clear cache
+- Database maintenance
+- Log file management
+
+<Warning>
+Changing port or network settings may affect user access. Coordinate changes with users and document new connection details.
+</Warning>
+
+## Storage Management
+
+Efficient storage management ensures optimal device performance.
+
+### Storage Overview
+
+The Device Info page shows:
+- Total storage capacity
+- Used space by content
+- Used space by system/logs
+- Available free space
+- Storage warnings if low
+
+### Managing Storage Locations
+
+<Steps>
+  <Step title="View Storage Locations">
+    From Device Settings:
+    - See all configured storage locations
+    - View available space per location
+    - Identify primary storage
+  </Step>
+  
+  <Step title="Add Storage Location">
+    Expand storage capacity:
+    - Click "Add Storage Location"
+    - Browse to external drive or partition
+    - Verify available space
+    - Add as additional storage
+  </Step>
+  
+  <Step title="Set Primary Storage">
+    Designate main content storage:
+    - Select storage location
+    - Set as primary
+    - New content imports to primary
+  </Step>
+  
+  <Step title="Remove Storage Location">
+    When no longer needed:
+    - Move content to other location first
+    - Remove empty storage location
+    - Cannot remove location with content
+  </Step>
+</Steps>
+
+### Storage Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Monitor Storage" icon="chart-pie">
+    - Check storage regularly
+    - Plan for content growth
+    - Set up storage alerts
+    - Maintain 10-20% free space
+  </Card>
+  
+  <Card title="Optimize Content" icon="compress">
+    - Remove unused channels
+    - Import selectively
+    - Delete outdated content
+    - Remove duplicate resources
+  </Card>
+  
+  <Card title="Use External Storage" icon="hdd">
+    - Offload content to external drives
+    - Expand capacity affordably
+    - Use high-speed drives
+    - Ensure reliable connections
+  </Card>
+  
+  <Card title="Plan Imports" icon="calendar">
+    - Calculate space before importing
+    - Stagger large imports
+    - Import during off-hours
+    - Verify space after import
+  </Card>
+</CardGroup>
+
+## Task Management
+
+Device operations run as background tasks that can be monitored and managed.
+
+### Task Types
+
+**Content Tasks**
+- Channel imports
+- Channel exports
+- Channel updates
+- Channel deletions
+- Content sync operations
+
+**Facility Tasks**
+- Facility sync
+- Data imports
+- Data exports
+- User imports (CSV)
+
+### Task Manager Interface
+
+**Active Tasks**
+
+View running tasks:
+- Task type and description
+- Progress percentage
+- Estimated time remaining
+- Status (running, queued, completed, failed)
+
+**Task Controls**
+- Cancel task (for cancellable operations)
+- Clear completed tasks
+- View task details
+- Retry failed tasks
+
+**Task Notifications**
+
+Tasks bar shows:
+- Number of active tasks
+- Overall progress
+- Task completion notifications
+- Error alerts for failed tasks
+
+<Info>
+Tasks continue running even if you navigate away. Check task manager to monitor long-running operations.
+</Info>
+
+## Facility Management (Device Level)
+
+Super admins can manage multiple facilities on a single device.
+
+### Multi-Facility Operations
+
+<Steps>
+  <Step title="View All Facilities">
+    From Device > Facilities:
+    - See all facilities on device
+    - View facility names and IDs
+    - See user counts per facility
+  </Step>
+  
+  <Step title="Create New Facility">
+    Add facility:
+    - Click "New Facility"
+    - Enter facility name
+    - Configure initial settings
+    - Create facility admin account
+  </Step>
+  
+  <Step title="Import Facility">
+    Bring facility from another device:
+    - Select import source (network or drive)
+    - Choose facility to import
+    - Import facility data and users
+  </Step>
+  
+  <Step title="Sync Facilities">
+    Keep facilities synchronized:
+    - Select facilities to sync
+    - Choose sync destination
+    - Initiate sync operation
+    - Monitor sync progress
+  </Step>
+  
+  <Step title="Remove Facility">
+    Delete facilities:
+    - Select facility to remove
+    - Confirm deletion
+    - All facility data deleted
+    - Cannot be undone
+  </Step>
+</Steps>
+
+### Facility Sync
+
+Synchronize facility data across devices:
+
+**Sync Options**
+- One-time manual sync
+- Scheduled automatic sync
+- Bi-directional sync
+- Conflict resolution
+
+**Synced Data**
+- User accounts
+- Class rosters
+- Learner progress
+- Lesson assignments
+- Quiz results
+
+<Tip>
+Regular facility syncing keeps data consistent across devices and enables distributed learning environments.
+</Tip>
+
+## Network Device Discovery
+
+Kolibri can automatically discover and connect to other Kolibri devices on the local network.
+
+### Discovery Features
+
+**Automatic Discovery**
+- Broadcast device presence on network
+- Discover other Kolibri instances
+- Display available devices
+- Connection status indicators
+
+**Device Information**
+
+For discovered devices:
+- Device name
+- Available channels
+- Facility information
+- Connection quality
+- Last seen timestamp
+
+### Using Network Devices
+
+<AccordionGroup>
+  <Accordion title="Content Import">
+    - Select network device as import source
+    - Browse channels on remote device
+    - Import content over local network
+    - Faster than internet import
+  </Accordion>
+  
+  <Accordion title="Content Access">
+    - Learners access content from other devices
+    - Stream without local download
+    - Unified library view
+    - Automatic device switching
+  </Accordion>
+  
+  <Accordion title="Facility Sync">
+    - Sync facility data between devices
+    - Keep user data current
+    - Distributed facility management
+    - Automatic sync scheduling
+  </Accordion>
+</AccordionGroup>
+
+## Content Export
+
+Export channels to share with other devices or create offline content packages.
+
+### Export Workflow
+
+<Steps>
+  <Step title="Select Export Destination">
+    Choose where to export:
+    - External USB drive
+    - Local network device
+    - Network file share
+  </Step>
+  
+  <Step title="Select Channels">
+    Choose content to export:
+    - Select one or more channels
+    - Choose specific topics within channels
+    - View total export size
+  </Step>
+  
+  <Step title="Start Export">
+    Begin export operation:
+    - Confirm destination has space
+    - Start export task
+    - Monitor in task manager
+  </Step>
+  
+  <Step title="Verify Export">
+    Confirm successful export:
+    - Check export completion
+    - Verify files on destination
+    - Test import on target device
+  </Step>
+</Steps>
+
+### Export Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Device Provisioning" icon="box">
+    Create content packages for new device setup in disconnected environments.
+  </Card>
+  
+  <Card title="Backup" icon="save">
+    Backup channel content to external storage for disaster recovery.
+  </Card>
+  
+  <Card title="Distribution" icon="truck">
+    Create USB drives with content for distribution to remote locations.
+  </Card>
+  
+  <Card title="Peer Sharing" icon="exchange">
+    Share content between nearby schools or learning centers.
+  </Card>
+</CardGroup>
+
+## User Permissions Management
+
+Super admins can manage user permissions across all facilities.
+
+### Permission Assignment
+
+**Super Admin Permissions**
+
+Grant super admin to trusted users:
+- Full device access
+- Content management
+- All facility administration
+- Device configuration
+
+**Revoking Permissions**
+- Downgrade super admin to facility admin
+- Revoke admin permissions
+- Assign coach role
+- Change to learner
+
+<Warning>
+Super admin permissions should be granted sparingly. These users have complete control over the device and all facilities.
+</Warning>
+
+## System Maintenance
+
+Regular maintenance ensures optimal Kolibri performance.
+
+### Maintenance Tasks
+
+**Database Optimization**
+- Vacuum database (SQLite)
+- Clear old session data
+- Optimize indexes
+- Remove orphaned records
+
+**Log Management**
+- View system logs
+- Download logs for troubleshooting
+- Clear old log entries
+- Set log retention periods
+
+**Cache Management**
+- Clear application cache
+- Refresh content metadata
+- Reset cached calculations
+- Rebuild search index
+
+**Updates**
+- Check for Kolibri updates
+- View release notes
+- Plan update schedule
+- Backup before updating
+
+### Backup and Recovery
+
+Protect data with regular backups:
+
+<Steps>
+  <Step title="Backup Content">
+    - Export all channels to external drive
+    - Document channel versions
+    - Store in safe location
+  </Step>
+  
+  <Step title="Backup Facility Data">
+    - Export facility databases
+    - Save user data and progress
+    - Include configuration files
+  </Step>
+  
+  <Step title="Document Configuration">
+    - Record device settings
+    - Note custom configurations
+    - List installed channels
+    - Save facility settings
+  </Step>
+  
+  <Step title="Test Recovery">
+    - Verify backup integrity
+    - Test restore procedures
+    - Document recovery steps
+    - Update backup regularly
+  </Step>
+</Steps>
+
+## Remote Management
+
+For deployments with internet connectivity, remote management options enable centralized administration.
+
+### Remote Features
+
+**Device Monitoring**
+- Connection status
+- Resource usage
+- Active users
+- Content inventory
+
+**Remote Updates**
+- Push content updates
+- Deploy configuration changes
+- Schedule maintenance
+- Monitor task completion
+
+<Info>
+Remote management features depend on network connectivity and may require additional setup. Consult deployment documentation for details.
+</Info>
+
+## Related Documentation
+
+<CardGroup cols={2}>
+  <Card title="Facility Management" icon="school" href="/features/facility-management">
+    Manage users, classes, and facility settings
+  </Card>
+  
+  <Card title="Content Library" icon="books" href="/features/content-library">
+    Learn about content channels and Kolibri Studio
+  </Card>
+  
+  <Card title="Coach Plugin" icon="chalkboard-teacher" href="/features/coach">
+    Create lessons and quizzes with imported content
+  </Card>
+  
+  <Card title="Learn Plugin" icon="book-reader" href="/features/learn">
+    Understand how learners access content
+  </Card>
+</CardGroup>

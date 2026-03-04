@@ -1,0 +1,228 @@
+---
+title: Code Quality Standards
+description: Code quality principles, linting, formatting, and pre-commit hooks for Kolibri development
+---
+
+## Overview
+
+Kolibri maintains high code quality standards to ensure a maintainable, reliable, and scalable codebase. These principles guide how we write and review code across the full stack—Python, JavaScript, Vue, and infrastructure.
+
+## Linting and Auto-Formatting
+
+### Tools Used
+
+Kolibri uses automated tools to enforce code quality and consistency:
+
+- **Prettier**: JavaScript, Vue, SCSS, and CSS formatting
+- **Black**: Python code formatting
+- **Flake8**: Python linting
+- **ESLint**: JavaScript and Vue linting
+
+### Manual Linting and Formatting
+
+You can manually run the auto-formatters:
+
+**Frontend:**
+
+```bash
+# Auto-format frontend code
+pnpm run lint-frontend:format
+
+# Check formatting without writing changes
+pnpm run lint-frontend
+```
+
+**Backend:**
+
+Backend linting and formatting is handled using `pre-commit` (see below).
+
+## Pre-commit Hooks
+
+<Warning>
+**It is strongly recommended to use pre-commit hooks** to ensure code quality and consistency before committing.
+</Warning>
+
+The pre-commit hooks are identical to the automated build checks run by CI in Pull Requests, so using them locally will help you catch issues early.
+
+### Installing Pre-commit Hooks
+
+[pre-commit](http://pre-commit.com/) is used to apply a full set of checks and formatting automatically each time that `git commit` runs. If there are errors, the Git commit is aborted and you are asked to fix the error and run `git commit` again.
+
+Pre-commit is already installed as a development dependency, but you also need to enable it:
+
+```bash
+pre-commit install
+```
+
+<Note>
+**Always run this command after cloning the repository** to enable pre-commit hooks for your local development environment.
+</Note>
+
+### Running Pre-commit Manually
+
+To run all pre-commit checks in the same way that they will be run on GitHub CI servers:
+
+```bash
+pre-commit run --all-files
+```
+
+This is particularly useful to run before creating a pull request to ensure all files pass checks.
+
+### Recommended Workflow with Pre-commit
+
+1. Make code changes
+2. Stage your changes: `git add <files>`
+3. Attempt commit: `git commit -m "Your message"`
+4. If pre-commit finds issues:
+   - Review the errors and warnings
+   - Many formatting issues will be auto-fixed - just review and re-stage the changes
+   - Fix any remaining issues manually
+   - Stage the fixes: `git add <files>`
+   - Retry the commit: `git commit -m "Your message"`
+5. Once all checks pass, your commit will succeed
+
+<Tip>
+As a convenience, many developers install linting and formatting plugins in their code editor (IDE). Installing ESLint, Prettier, Black, and Flake8 plugins in your editor will catch most (but not all) code-quality checks.
+</Tip>
+
+### Pre-commit Configuration
+
+Kolibri's pre-commit configuration includes:
+
+- **trailing-whitespace**: Removes trailing whitespace
+- **check-yaml**: Validates YAML files
+- **check-added-large-files**: Prevents committing large files
+- **debug-statements**: Prevents Python debug statements
+- **end-of-file-fixer**: Ensures files end with a newline
+- **flake8**: Python linting with flake8-print
+- **reorder-python-imports**: Sorts Python imports
+- **lint-frontend**: Linting of JS, Vue, SCSS, and CSS files
+- **core-js-api**: Rebuilds kolibri package on changes to core JS API
+- **no-auto-migrations**: Prevents auto-named migrations (migrations must have descriptive names)
+- **no-swappable-auth-migrations**: Prevents migrations with swappable auth models
+- **no-kolibri-common-imports**: Prevents invalid package imports
+- **check-lfs-pointers**: Ensures LFS files are pointers not binary data
+- **black**: Python code formatting (always runs last)
+
+<Warning>
+If you do not use pre-commit or other linting tools, your code will likely fail our server-side checks and you will need to update the PR in order to get it merged.
+</Warning>
+
+## Code Quality Principles
+
+These principles apply across the full stack and reflect patterns that have proven valuable in practice.
+
+### Every Concern Lives at Exactly One Layer
+
+If a behavior like validation, retry, error handling, or permission checking is implemented at one layer, do not reimplement it at another. Choose the layer that owns the concern and trust it.
+
+**In Kolibri:**
+
+- Permission checks belong in `KolibriAuthPermissions` and `RoleBasedPermissions` on models—not duplicated in frontend route guards and API views
+- Validation logic belongs in serializers or model `clean()` methods—not scattered across both the viewset and the serializer
+- Do not introduce global or shared mutable state to coordinate between modules
+
+### Prefer the Simplest Implementation
+
+Do not introduce abstraction layers until a concrete second use case demands it. Flat is better than nested. An `if/else` is better than a strategy pattern when there are two cases.
+
+<Tip>
+When uncertain, make code easy to replace rather than easy to extend.
+</Tip>
+
+### Preserve Existing Comments
+
+Only remove a comment if it describes code that has been deleted or is provably incorrect. When modifying code that has comments, update the comments to reflect the changes. Do not strip comments to "clean up" a file.
+
+### Interfaces Stay Small
+
+Every public method needs justification. If something can be private, it must be. Push implementation details behind the interface boundary.
+
+**In Kolibri:**
+
+- Keep the `values` tuple in `ValuesViewset` minimal—only fetch fields that are actually needed
+- Composables should return a focused public API—not expose every internal ref
+- A growing public surface area is a design smell; refactor to reduce it before continuing
+
+### Tests Assert Behavior, Not Implementation
+
+Test inputs and outputs. Mock only at hard boundaries: network, filesystem, external services. Do not mock internal modules or classes to isolate units—test them through the real call chain.
+
+**In Kolibri:**
+
+- Frontend tests use [Vue Testing Library](https://testing-library.com/docs/vue-testing-library/intro) which encourages testing from the user's perspective—query by text, role, and label rather than component internals
+- Backend tests call API endpoints through Django's test client and assert on response data, not on internal method calls
+
+### Do Not Store What Can Be Computed
+
+Do not add fields to data structures that are derivable from other fields in the same structure. Expose derived values as methods or computed properties.
+
+**In Kolibri:**
+
+- Use `computed()` in Vue composables for derived state rather than maintaining separate refs that must be kept in sync
+- Use `annotate_queryset` in `ValuesViewset` for computed database fields rather than post-processing in Python
+- If caching is needed for performance, keep the cached value private—never expose redundant state in the public interface
+
+### Let Errors Propagate
+
+Do not wrap every call in try/catch blocks that just log and rethrow, or that catch broad exception types only to obscure the original failure. Let exceptions propagate to the layer that can actually handle them meaningfully.
+
+<Note>
+If something that "cannot happen" happens, crash—a dead program does less damage than a crippled one continuing to run on corrupted state.
+</Note>
+
+In Kolibri, Django REST Framework's exception handling will catch unhandled exceptions and return appropriate error responses—there is no need to wrap every view method in a try/except.
+
+### Tell, Don't Ask
+
+Do not reach into an object, inspect its internal state, make a decision based on that state, and then update the object. Instead, tell the object what you want done and let it manage its own state.
+
+**In Kolibri:**
+
+- Use `RoleBasedPermissions` declaratively on models rather than checking roles manually in views
+- Composables should expose actions (`fetchChannels()`) rather than forcing callers to manipulate internal refs directly
+- Avoid method chains that traverse multiple levels of abstraction to reach into nested structures
+
+### Prefer Composition Over Inheritance
+
+Do not use class inheritance to share behavior between types. Inheritance couples the child to the parent's implementation—when the parent changes, the child breaks silently.
+
+**In Kolibri:**
+
+- Vue composables are preferred over mixins for sharing component logic—composables use explicit composition rather than implicit merging
+- Use interfaces or protocols to define shared behavior contracts, delegation to reuse implementation
+- Reserve inheritance only for true "is-a" relationships where substitutability is required and the hierarchy is shallow
+
+### Follow Existing Naming Conventions
+
+Match the naming style of the language (`snake_case` in Python, `camelCase` in JavaScript) and the conventions already established in the codebase. Use the same terms the project already uses for domain concepts—do not introduce synonyms.
+
+**In Kolibri:**
+
+- A group of learners is a `Collection`, not a "group" or "class" (`Classroom` is a specific kind of `Collection`)
+- Content items are `ContentNode` objects, not "resources" or "materials"
+- Use `Facility`, `FacilityUser`, `Classroom`, `LearnerGroup`—these are the established model names
+
+<Tip>
+Names should reveal intent: avoid generic names like `data`, `result`, `info`, `item`, or `temp` when a more specific name exists.
+</Tip>
+
+### Do Not Weaken Existing Tests
+
+Do not modify or delete existing tests unless the behavior they test has been intentionally changed. If new code breaks existing tests, fix the code, not the tests. Never loosen assertions, add workarounds, or reduce coverage to make a failing test pass.
+
+<Warning>
+Existing tests encode the team's understanding of correct behavior. Weakening them to accommodate new code masks regressions and erodes the test suite's value over time.
+</Warning>
+
+## Editor Configuration
+
+We have a project-level `.editorconfig` file to help you configure your text editor or IDE to use our internal conventions.
+
+[Check your editor](http://editorconfig.org/#download) to see if it supports EditorConfig out-of-the-box, or if a plugin is available.
+
+## Additional Resources
+
+- [Code Quality Documentation](https://kolibri-dev.readthedocs.io/en/develop/code_quality.html)
+- [Frontend Conventions](https://kolibri-dev.readthedocs.io/en/develop/frontend_architecture/conventions.html)
+- [Kolibri Design System](https://design-system.learningequality.org/)

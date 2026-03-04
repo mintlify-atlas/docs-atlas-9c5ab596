@@ -1,0 +1,544 @@
+---
+title: Android Deployment
+description: Build and distribute Kolibri as an Android APK for mobile deployment
+---
+
+Kolibri can be deployed as an Android application, enabling mobile access to educational content on tablets and phones. The Android app is built using Python-for-Android and distributed as an APK.
+
+## Android Platform Detection
+
+Kolibri includes platform detection for Android environments:
+
+```python
+# From kolibri/utils/android.py
+
+ANDROID_PLATFORM_SYSTEM_VALUE = "Android"
+
+def on_android():
+    """Check if running on Android platform."""
+    return hasattr(sys, "getandroidapilevel")
+```
+
+This detection is used throughout Kolibri to handle Android-specific behavior:
+
+- **Security constraints**: Android restricts access to `/proc`, requiring different system information gathering
+- **File system limitations**: Different paths and permissions compared to desktop Linux
+- **API level awareness**: The `getandroidapilevel()` method returns the minimum Android API level the Python build targets
+
+<Note>
+  The Android API level returned by `sys.getandroidapilevel()` represents the minimum API level Python was compiled against, not the current runtime Android version.
+</Note>
+
+## Build Pipeline
+
+The Android APK is built from the `kolibri-static` PyPI package:
+
+```
+Git release branch
+        |
+        v
+  kolibri-static
+  (PyPI package)
+        |
+        v
+   Android APK
+```
+
+### Prerequisites
+
+<Steps>
+  <Step title="Install Build Tools">
+    Required tools for building Android APK:
+
+    - Python 3.6+ (matching Kolibri's requirements)
+    - Android SDK and NDK
+    - Python-for-Android (p4a)
+    - Buildozer (optional, for simplified builds)
+  </Step>
+
+  <Step title="Install Kolibri Static">
+    ```bash
+    pip install kolibri-static
+    ```
+
+    This package includes all dependencies bundled, ideal for offline environments.
+  </Step>
+</Steps>
+
+## Configuration
+
+### Android-Specific Settings
+
+When running on Android, Kolibri uses platform-specific configurations:
+
+```python
+# Android detection affects:
+# - File descriptor calculations (no /proc access)
+# - Thread pool sizing (limited by Android constraints)
+# - Storage paths (Android-specific directories)
+# - System info gathering (different APIs)
+```
+
+### KOLIBRI_HOME on Android
+
+On Android, `KOLIBRI_HOME` is typically set to:
+
+```bash
+/data/data/<package_name>/files/.kolibri
+```
+
+This location provides:
+- App-private storage
+- Persistent across app updates
+- Automatic backup support (if enabled)
+- Protected from other apps
+
+### Environment Variables
+
+Recommended environment variables for Android deployment:
+
+```bash
+export KOLIBRI_HOME=/data/data/org.learningequality.kolibri/files/.kolibri
+export KOLIBRI_HTTP_PORT=5000
+export KOLIBRI_RUN_MODE=android
+export KOLIBRI_NO_FILE_BASED_LOGGING=1  # Log to logcat instead
+```
+
+## Building the APK
+
+### Using Python-for-Android
+
+Basic build process:
+
+<Steps>
+  <Step title="Create Build Recipe">
+    Create a Python-for-Android recipe for Kolibri:
+
+    ```python
+    # recipe.py
+    from pythonforandroid.recipe import PythonRecipe
+
+    class KolibriRecipe(PythonRecipe):
+        name = 'kolibri'
+        version = '0.17.0'  # Update to match release
+        url = 'https://pypi.org/packages/source/k/kolibri-static/kolibri-static-{version}.tar.gz'
+        depends = ['python3', 'sqlite3', 'openssl']
+        site_packages_name = 'kolibri'
+    ```
+  </Step>
+
+  <Step title="Build with P4A">
+    ```bash
+    p4a apk \
+      --private /path/to/kolibri \
+      --package org.learningequality.kolibri \
+      --name "Kolibri" \
+      --version 0.17.0 \
+      --bootstrap sdl2 \
+      --requirements python3,kolibri-static \
+      --permission INTERNET \
+      --permission WRITE_EXTERNAL_STORAGE \
+      --permission READ_EXTERNAL_STORAGE \
+      --orientation sensor
+    ```
+  </Step>
+</Steps>
+
+### Using Buildozer
+
+Buildozer simplifies the build process:
+
+<Steps>
+  <Step title="Install Buildozer">
+    ```bash
+    pip install buildozer
+    ```
+  </Step>
+
+  <Step title="Create buildozer.spec">
+    ```ini
+    [app]
+    title = Kolibri
+    package.name = kolibri
+    package.domain = org.learningequality
+
+    source.dir = .
+    source.include_exts = py,png,jpg,kv,atlas,json
+
+    version = 0.17.0
+    requirements = python3,kolibri-static==0.17.0
+
+    permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
+
+    orientation = sensor
+
+    [buildozer]
+    log_level = 2
+    warn_on_root = 1
+
+    android.api = 28
+    android.minapi = 21
+    android.ndk = 23b
+    android.sdk = 30
+    ```
+  </Step>
+
+  <Step title="Build APK">
+    ```bash
+    buildozer android debug
+    ```
+
+    Release build:
+    ```bash
+    buildozer android release
+    ```
+  </Step>
+</Steps>
+
+## Application Lifecycle
+
+### Starting Kolibri on Android
+
+The Android app needs a service wrapper to run Kolibri:
+
+```python
+# main.py
+import os
+import sys
+from android.runnable import run_on_ui_thread
+from jnius import autoclass
+
+# Set environment
+os.environ['KOLIBRI_HOME'] = '/data/data/org.learningequality.kolibri/files/.kolibri'
+os.environ['KOLIBRI_HTTP_PORT'] = '5000'
+os.environ['KOLIBRI_RUN_MODE'] = 'android'
+
+# Start Kolibri
+from kolibri.utils.cli import main
+
+if __name__ == '__main__':
+    # Start in background
+    sys.argv = ['kolibri', 'start', '--foreground']
+    main()
+```
+
+### Background Service
+
+Create a persistent background service:
+
+```python
+from android.service import Service
+from android import AndroidService
+
+class KolibriService(Service):
+    def onCreate(self):
+        # Initialize Kolibri
+        pass
+
+    def onStartCommand(self, intent, flags, startId):
+        # Start Kolibri server
+        return AndroidService.START_STICKY
+
+    def onDestroy(self):
+        # Stop Kolibri server
+        pass
+```
+
+## App Configuration
+
+### Permissions
+
+Required Android permissions:
+
+```xml
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+<uses-permission android:name="android.permission.WAKE_LOCK" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+```
+
+Optional permissions:
+```xml
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+<uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+```
+
+### Database Considerations
+
+On Android, Kolibri uses SQLite (PostgreSQL is not available):
+
+```python
+# Automatically configured for Android
+DATABASES = {
+    "default": {
+        "ENGINE": "kolibri.deployment.default.db.backends.sqlite3",
+        "NAME": os.path.join(KOLIBRI_HOME, "db.sqlite3"),
+        "OPTIONS": {"timeout": 100},
+    },
+}
+```
+
+<Warning>
+  Android has strict file descriptor limits. The thread pool is automatically constrained to prevent exceeding these limits.
+</Warning>
+
+## Content Pre-loading
+
+For offline deployment, pre-load content into the APK:
+
+<Steps>
+  <Step title="Prepare Content">
+    Export content channels on a desktop system:
+
+    ```bash
+    # Export channel
+    kolibri manage exportchannel <channel_id> /path/to/export
+
+    # Export content
+    kolibri manage exportcontent <channel_id> /path/to/export
+    ```
+  </Step>
+
+  <Step title="Include in APK">
+    Add content to the APK assets:
+
+    ```bash
+    # Copy to assets directory
+    mkdir -p assets/content
+    cp -r /path/to/export/* assets/content/
+    ```
+
+    Update build configuration to include assets.
+  </Step>
+
+  <Step title="Import on First Run">
+    Import content from assets on first launch:
+
+    ```python
+    import shutil
+    from android.storage import app_storage_path
+
+    assets_path = os.path.join(app_storage_path(), 'content')
+    if os.path.exists(assets_path):
+        # Copy to KOLIBRI_HOME
+        shutil.copytree(
+            assets_path,
+            os.path.join(os.environ['KOLIBRI_HOME'], 'content')
+        )
+    ```
+  </Step>
+</Steps>
+
+See [Offline Setup](/deployment/offline-setup) for more details on content pre-loading.
+
+## Distribution
+
+### APK Signing
+
+For production distribution, sign the APK:
+
+```bash
+# Generate keystore (first time only)
+keytool -genkey -v \
+  -keystore kolibri-release.keystore \
+  -alias kolibri \
+  -keyalg RSA \
+  -keysize 2048 \
+  -validity 10000
+
+# Sign APK
+jarsigner -verbose \
+  -sigalg SHA1withRSA \
+  -digestalg SHA1 \
+  -keystore kolibri-release.keystore \
+  bin/Kolibri-0.17.0-release-unsigned.apk \
+  kolibri
+
+# Align APK
+zipalign -v 4 \
+  bin/Kolibri-0.17.0-release-unsigned.apk \
+  bin/Kolibri-0.17.0-release.apk
+```
+
+### Distribution Methods
+
+<CardGroup cols={2}>
+  <Card title="Direct Download" icon="download">
+    Host APK on a web server for direct download
+  </Card>
+  <Card title="USB Transfer" icon="usb">
+    Copy APK to devices via USB for offline distribution
+  </Card>
+  <Card title="Local Network" icon="network-wired">
+    Share APK over local network using FTP/HTTP server
+  </Card>
+  <Card title="SD Card" icon="sd-card">
+    Pre-load APK on SD cards for bulk distribution
+  </Card>
+</CardGroup>
+
+<Warning>
+  For Google Play Store distribution, additional compliance and testing requirements apply. Consult Google Play policies.
+</Warning>
+
+## Testing
+
+### Android Testing Features
+
+Kolibri includes Android-specific integration tests:
+
+```gherkin
+# From integration_testing/.../android-app-bar.feature
+Feature: Android App Bar
+  The app bar on Android devices has specific behaviors
+
+  Scenario: App bar displays on Android
+    Given I am on an Android device
+    When I open Kolibri
+    Then I should see the Android app bar
+```
+
+### Testing Checklist
+
+<AccordionGroup>
+  <Accordion title="Installation Testing">
+    - APK installs successfully
+    - App requests appropriate permissions
+    - First launch completes setup wizard
+    - Database initialization succeeds
+  </Accordion>
+
+  <Accordion title="Functionality Testing">
+    - Server starts and binds to port
+    - Web UI loads in WebView/browser
+    - Content import/export works
+    - User authentication functions
+    - Offline mode operates correctly
+  </Accordion>
+
+  <Accordion title="Performance Testing">
+    - App doesn't crash under memory pressure
+    - Thread pool stays within FD limits
+    - Database operations complete successfully
+    - Content playback is smooth
+  </Accordion>
+
+  <Accordion title="Platform Testing">
+    - Test on different Android versions (API 21+)
+    - Test on different device sizes (phone/tablet)
+    - Test on different screen orientations
+    - Test on devices with limited storage
+  </Accordion>
+</AccordionGroup>
+
+### Debugging
+
+Debug the Android app using logcat:
+
+```bash
+# View all logs
+adb logcat
+
+# Filter Python logs
+adb logcat | grep python
+
+# Filter Kolibri logs
+adb logcat | grep kolibri
+
+# Clear logs and follow
+adb logcat -c && adb logcat
+```
+
+## Troubleshooting
+
+### Common Issues
+
+<AccordionGroup>
+  <Accordion title="Build Failures">
+    **NDK version mismatch**
+    ```bash
+    # Specify NDK version explicitly
+    buildozer android debug \n      android.ndk = 23b
+    ```
+
+    **Missing dependencies**
+    ```bash
+    # Install build dependencies
+    sudo apt-get install python3-dev build-essential \
+      libsqlite3-dev libffi-dev libssl-dev
+    ```
+  </Accordion>
+
+  <Accordion title="Runtime Errors">
+    **Port already in use**
+    ```python
+    # Use different port
+    os.environ['KOLIBRI_HTTP_PORT'] = '5001'
+    ```
+
+    **Storage permission denied**
+    ```python
+    # Request permissions at runtime (Android 6+)
+    from android.permissions import request_permissions, Permission
+    request_permissions([
+        Permission.WRITE_EXTERNAL_STORAGE,
+        Permission.READ_EXTERNAL_STORAGE
+    ])
+    ```
+  </Accordion>
+
+  <Accordion title="Performance Issues">
+    **Too many open files**
+    ```python
+    # Reduce thread pool size
+    os.environ['KOLIBRI_SERVER_CHERRYPY_THREAD_POOL'] = '30'
+    ```
+
+    **Out of memory**
+    ```python
+    # Enable file logging to reduce memory overhead
+    os.environ['KOLIBRI_NO_FILE_BASED_LOGGING'] = '0'
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Minimize APK Size" icon="compress">
+    - Use `kolibri-static` package
+    - Exclude unnecessary dependencies
+    - Use APK split or Android App Bundle
+    - Compress assets
+  </Card>
+  <Card title="Optimize Performance" icon="gauge-high">
+    - Constrain thread pool for mobile
+    - Use appropriate cache sizes
+    - Implement proper lifecycle management
+    - Handle background/foreground transitions
+  </Card>
+  <Card title="Plan for Offline" icon="wifi-slash">
+    - Pre-load essential content
+    - Test without network connectivity
+    - Implement proper error handling
+    - Provide offline documentation
+  </Card>
+  <Card title="Test Thoroughly" icon="vial">
+    - Test on multiple devices
+    - Test different Android versions
+    - Test with limited resources
+    - Test update scenarios
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Offline Setup" icon="wifi-slash" href="/deployment/offline-setup">
+    Pre-load content for network-free operation
+  </Card>
+  <Card title="Production Deployment" icon="server" href="/deployment/production">
+    Learn about server-based deployment
+  </Card>
+</CardGroup>
